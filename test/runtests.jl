@@ -1,6 +1,6 @@
 using PiccoloQuantumObjects
 using Test
+using TestItems
 
-@testset "PiccoloQuantumObjects.jl" begin
-    # Write your tests here.
-end
+# Run all testitem tests in package
+@run_package_tests
