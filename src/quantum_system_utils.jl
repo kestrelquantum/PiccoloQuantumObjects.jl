@@ -236,16 +236,25 @@ function is_reachable(
     )
 end
 
+function onehot(n::Int, i::Int)
+    v = zeros(n)
+    v[i] = 1.0
+    return v
+end
+
 function is_reachable(
     gate::AbstractMatrix,
     system::QuantumSystem;
     use_drift::Bool=true,
     kwargs...
 )
-    if !iszero(system.H_drift) && use_drift
-        hamiltonians = [system.H_drift, system.H_drives...]
-    else
-        hamiltonians = system.H_drives
+    H_drift = sparse(system.H(zeros(system.n_drives)))
+    hamiltonians = [
+        sparse(system.H(onehot(system.n_drives, i))) - H_drift
+            for i = 1:system.n_drives
+    ]
+    if use_drift && !isapprox(H_drift, zeros(eltype(H_drift), size(H_drift)))
+        push!(hamiltonians, H_drift)
     end
     return is_reachable(gate, hamiltonians; kwargs...)
 end

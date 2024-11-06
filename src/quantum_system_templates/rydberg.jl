@@ -104,20 +104,9 @@ function RydbergChainSystem(;
     H_detune = -sum([operator_from_string(lift('n',i,N), lookup=PAULIS) for i in 1:N])
     push!(H_drives, H_detune)
 
-    params = Dict{Symbol, Any}(
-        :N => N,
-        :C => C,
-        :distance => distance,
-        :cutoff_order => cutoff_order,
-        :local_detune => local_detune,
-        :all2all => all2all,
-    )
-
     return QuantumSystem(
         H_drift,
-        H_drives;
-        constructor=RydbergChainSystem,
-        params=params,
+        H_drives
     )
 end
 

@@ -12,13 +12,15 @@ export get_iso_vec_leakage_indices
 export get_iso_vec_subspace_indices
 export get_subspace_identity
 
+using ..Gates
+using ..Isomorphisms
+using ..QuantumSystems
+using ..CompositeQuantumSystems
+
 using LinearAlgebra
 using TestItemRunner
 using TrajectoryIndexingUtils
 
-using ..Gates
-using ..Isomorphisms
-using ..QuantumSystems
 
 @doc raw"""
     embed(matrix::Matrix{ComplexF64}, subspace_indices::AbstractVector{Int}, levels::Int)

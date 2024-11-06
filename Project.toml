@@ -4,6 +4,7 @@ authors = ["Aaron Trowbridge <aaron.j.trowbridge@gmail.com> and contributors"]
 version = "1.0.0-DEV"
 
 [deps]
+ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 Reexport = "189a3867-3050-52da-a836-e630ba90ab69"
 SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
@@ -12,6 +13,7 @@ TestItems = "1c621080-faea-4a02-84b6-bbd5e436b8fe"
 TrajectoryIndexingUtils = "6dad8b7f-dd9a-4c28-9b70-85b9a079bfc8"
 
 [compat]
+ForwardDiff = "0.10.37"
 LinearAlgebra = "1.11.0"
 Reexport = "1.2.2"
 SparseArrays = "1.11.0"
