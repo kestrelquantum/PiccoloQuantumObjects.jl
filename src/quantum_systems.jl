@@ -112,13 +112,39 @@ function QuantumSystem(H::Function, n_drives::Int)
 end
 
 
-
-function Base.copy(sys::QuantumSystem)
-    return QuantumSystem(
-        copy(sys.H_drift),
-        copy.(sys.H_drives)
-    )
+function L_function(Ls::AbstractVector{<:AbstractMatrix})
+    return sum([conj(L) ⊗ L - 1 / 2 * ad_vec(L'L, anti=true) for L in Ls])
 end
+
+function QuantumSystem(
+    H_drift::AbstractMatrix,
+    H_drives::Vector{<:AbstractMatrix},
+    dissipation_operators::Vector{<:AbstractMatrix}
+)
+    H_drift = sparse(H_drift)
+    H_drives = sparse.(H_drives)
+
+    H = a -> H_drift + sum(a .* H_drives)
+
+    𝒟̃ = sparse(iso(L_function(dissipation_operators)))
+
+    G = a -> Isomorphisms.G(ad_vec(H(a))) + 𝒟̃
+
+    ∂Gs = Isomorphisms.G.(ad_vec.(H_drives))
+    ∂G = a -> ∂Gs
+
+    levels = size(H_drift, 1)
+
+    return QuantumSystem(
+        H,
+        G,
+        ∂G,
+        levels,
+        length(H_drives)
+    )
+
+end
+
 
 
 
@@ -131,6 +157,25 @@ end
 
     system = QuantumSystem(H_drift, H_drives)
 end
+
+@testitem "System creation with dissipation" begin
+    H_drift = GATES[:Z]
+    H_drives = [GATES[:X], GATES[:Y]]
+    dissipation_operators = [GATES[:Z], GATES[:X]]
+
+    system = QuantumSystem(H_drift, H_drives, dissipation_operators)
+
+    # test jacobians
+    a = randn(system.n_drives)
+    ∂G = system.∂G(a)
+    @test length(∂G) == system.n_drives
+    @test all(∂G .≈ QuantumSystems.generator_jacobian(system.G)(a))
+end
+
+
+
+
+
 
 
 end

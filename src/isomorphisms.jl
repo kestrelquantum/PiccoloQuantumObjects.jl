@@ -15,6 +15,7 @@ export ad_vec
 export ⊗
 
 using LinearAlgebra
+using SparseArrays
 using TestItemRunner
 
 ⊗(xs::AbstractVecOrMat...) = kron(xs...)
