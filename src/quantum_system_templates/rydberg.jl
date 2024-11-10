@@ -1,3 +1,4 @@
+export RydbergChainSystem
 
 function generate_pattern(N::Int, i::Int)
     # Create an array filled with 'I'

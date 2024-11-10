@@ -5,6 +5,9 @@ using Reexport
 include("gates.jl")
 @reexport using .Gates
 
+include("quantum_object_utils.jl")
+@reexport using .QuantumObjectUtils
+
 include("isomorphisms.jl")
 @reexport using .Isomorphisms
 
@@ -16,9 +19,6 @@ include("composite_quantum_systems.jl")
 
 include("embedded_operators.jl")
 @reexport using .EmbeddedOperators
-
-include("quantum_object_utils.jl")
-@reexport using .QuantumObjectUtils
 
 include("quantum_system_utils.jl")
 @reexport using .QuantumSystemUtils

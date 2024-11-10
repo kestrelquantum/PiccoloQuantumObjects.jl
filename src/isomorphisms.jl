@@ -12,13 +12,12 @@ export operator_to_iso_operator
 export iso
 export iso_dm
 export ad_vec
-export ⊗
 
 using LinearAlgebra
 using SparseArrays
 using TestItemRunner
 
-⊗(xs::AbstractVecOrMat...) = kron(xs...)
+using ..QuantumObjectUtils
 
 @doc raw"""
     mat(x::AbstractVector)

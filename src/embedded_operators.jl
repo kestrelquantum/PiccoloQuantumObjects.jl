@@ -14,6 +14,7 @@ export get_subspace_identity
 
 using ..Gates
 using ..Isomorphisms
+using ..QuantumObjectUtils
 using ..QuantumSystems
 using ..CompositeQuantumSystems
 
@@ -94,6 +95,11 @@ struct EmbeddedOperator
     end
 end
 
+"""
+    OperatorType
+
+Union type for operators.
+"""
 const OperatorType = Union{AbstractMatrix{<:Number}, EmbeddedOperator}
 
 EmbeddedOperator(op::Matrix{<:Number}, subspace_indices::AbstractVector{Int}, levels::Int) =

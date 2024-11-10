@@ -8,6 +8,7 @@ export QuantumSystemCoupling
 export lift
 
 using ..Isomorphisms
+using ..QuantumObjectUtils
 
 using LinearAlgebra
 using SparseArrays
@@ -47,6 +48,7 @@ struct QuantumSystem <: AbstractQuantumSystem
     ∂G::Function
     levels::Int
     n_drives::Int
+    params::Dict{Symbol, Any}
 end
 
 """
@@ -61,7 +63,8 @@ Constructs a `QuantumSystem` object from the drift and drive Hamiltonian terms.
 """
 function QuantumSystem(
     H_drift::AbstractMatrix{<:Number},
-    H_drives::Vector{<:AbstractMatrix{<:Number}}
+    H_drives::Vector{<:AbstractMatrix{<:Number}};
+    params=Dict{Symbol, Any}(),
 )
     H_drift = sparse(H_drift)
     H_drives = sparse.(H_drives)
@@ -76,7 +79,8 @@ function QuantumSystem(
         G,
         ∂G,
         levels,
-        length(H_drives)
+        length(H_drives),
+        params
     )
 end
 
@@ -96,37 +100,35 @@ function QuantumSystem(H_drift::AbstractMatrix{<:Number}; kwargs...)
     )
 end
 
-function generator_jacobian(H::Function)
+function generator_jacobian(G::Function)
     return function ∂G(a::Vector{Float64})
-        ∂G⃗ = ForwardDiff.jacobian(a_ -> vec(sparse(H(a_))), a)
+        ∂G⃗ = ForwardDiff.jacobian(a_ -> vec(G(a_)), a)
         dim = Int(sqrt(size(∂G⃗, 1)))
         return [reshape(∂G⃗ⱼ, dim, dim) for ∂G⃗ⱼ ∈ eachcol(∂G⃗)]
     end
 end
 
-function QuantumSystem(H::Function, n_drives::Int)
+function QuantumSystem(H::Function, n_drives::Int; params=Dict{Symbol, Any}())
     G = a -> Isomorphisms.G(sparse(H(a)))
     ∂G = generator_jacobian(H)
     levels = size(H(zeros(n_drives)), 1)
-    return QuantumSystem(H, G, ∂G, levels, n_drives)
+    return QuantumSystem(H, G, ∂G, levels, n_drives, params)
 end
 
-
-function L_function(Ls::AbstractVector{<:AbstractMatrix})
-    return sum([conj(L) ⊗ L - 1 / 2 * ad_vec(L'L, anti=true) for L in Ls])
-end
 
 function QuantumSystem(
     H_drift::AbstractMatrix,
     H_drives::Vector{<:AbstractMatrix},
-    dissipation_operators::Vector{<:AbstractMatrix}
+    dissipation_operators::Vector{<:AbstractMatrix};
+    params=Dict{Symbol, Any}()
 )
     H_drift = sparse(H_drift)
     H_drives = sparse.(H_drives)
 
     H = a -> H_drift + sum(a .* H_drives)
 
-    𝒟̃ = sparse(iso(L_function(dissipation_operators)))
+    𝒟 = sum(conj(L) ⊗ L - 1 / 2 * ad_vec(L'L, anti=true) for L ∈ dissipation_operators)
+    𝒟̃ = sparse(iso(𝒟))
 
     G = a -> Isomorphisms.G(ad_vec(H(a))) + 𝒟̃
 
@@ -140,7 +142,8 @@ function QuantumSystem(
         G,
         ∂G,
         levels,
-        length(H_drives)
+        length(H_drives),
+        params
     )
 
 end

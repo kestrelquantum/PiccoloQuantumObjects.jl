@@ -10,6 +10,8 @@ export haar_identity
 export create
 export annihilate
 
+export ⊗
+
 using ..Gates
 
 using LinearAlgebra
@@ -20,6 +22,8 @@ using TestItemRunner
 # [ ] Allow multi-character symbols for operators_from_string
 # [ ] Remove need for otimes symbol or avoid import conflicts with other packages
 
+
+⊗(xs::AbstractVecOrMat...) = kron(xs...)
 
 @doc raw"""
 operator_from_string(operator::String; lookup::Dict{Symbol, AbstractMatrix}=PAULIS)
