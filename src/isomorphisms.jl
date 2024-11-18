@@ -118,13 +118,14 @@ Convert a real matrix `Ũ` representing an isomorphism operator into a real vec
 
 Must be differentiable.
 """
-function iso_operator_to_iso_vec(Ũ::AbstractMatrix{R}) where R
-    N = size(Ũ, 1) ÷ 2
-    Ũ⃗ = Vector{R}(undef, N^2 * 2)
-    for i=0:N-1
-        Ũ⃗[i*2N .+ (1:2N)] .= @view Ũ[:, i+1]
-    end
-    return Ũ⃗
+@views function iso_operator_to_iso_vec(Ũ::AbstractMatrix{R}) where R <: Real
+    return reshape(Ũ[:, 1:end÷2], :)
+    # N = size(Ũ, 1) ÷ 2
+    # Ũ⃗ = zeros(R, N^2 * 2)
+    # for i=0:N-1
+    #     Ũ⃗[i*2N .+ (1:2N)] .= @view Ũ[:, i+1]
+    # end
+    # return Ũ⃗
 end
 
 iso_operator_to_operator(Ũ) = iso_vec_to_operator(iso_operator_to_iso_vec(Ũ))

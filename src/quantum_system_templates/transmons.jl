@@ -98,8 +98,7 @@ function TransmonSystem(;
     return QuantumSystem(
         H_drift,
         H_drives;
-        constructor=TransmonSystem,
-        params=params,
+        params=params
     )
 end
 

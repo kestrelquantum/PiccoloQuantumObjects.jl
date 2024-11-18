@@ -1,6 +1,6 @@
 module EmbeddedOperators
 
-export OperatorType
+export AbstractPiccoloOperator
 export EmbeddedOperator
 
 export embed
@@ -96,11 +96,11 @@ struct EmbeddedOperator
 end
 
 """
-    OperatorType
+    AbstractPiccoloOperator
 
 Union type for operators.
 """
-const OperatorType = Union{AbstractMatrix{<:Number}, EmbeddedOperator}
+const AbstractPiccoloOperator = Union{AbstractMatrix{<:Number}, EmbeddedOperator}
 
 EmbeddedOperator(op::Matrix{<:Number}, subspace_indices::AbstractVector{Int}, levels::Int) =
     EmbeddedOperator(op, subspace_indices, [levels])
