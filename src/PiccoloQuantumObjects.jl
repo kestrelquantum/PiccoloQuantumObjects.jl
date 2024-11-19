@@ -23,7 +23,4 @@ include("embedded_operators.jl")
 include("quantum_system_utils.jl")
 @reexport using .QuantumSystemUtils
 
-include("quantum_system_templates/_quantum_system_templates.jl")
-@reexport using .QuantumSystemTemplates
-
 end
