@@ -16,11 +16,6 @@ using TestItemRunner
 using ForwardDiff
 
 
-# TODO:
-# [ ] subtypes? SingleQubitSystem, TwoQubitSystem, TransmonSystem, MultimodeSystem, etc.
-# [ ] add frame info to type
-# [ ] add methods to combine composite quantum systems
-
 # ----------------------------------------------------------------------------- #
 # AbstractQuantumSystem
 # ----------------------------------------------------------------------------- #
@@ -63,7 +58,7 @@ Constructs a `QuantumSystem` object from the drift and drive Hamiltonian terms.
 """
 function QuantumSystem(
     H_drift::AbstractMatrix{<:Number},
-    H_drives::Vector{<:AbstractMatrix{<:Number}};
+    H_drives::Vector{<:AbstractMatrix{<:Number}}; 
     params=Dict{Symbol, Any}(),
 )
     H_drift = sparse(H_drift)
@@ -115,7 +110,6 @@ function QuantumSystem(H::Function, n_drives::Int; params=Dict{Symbol, Any}())
     return QuantumSystem(H, G, ∂G, levels, n_drives, params)
 end
 
-
 function QuantumSystem(
     H_drift::AbstractMatrix,
     H_drives::Vector{<:AbstractMatrix},
@@ -127,12 +121,15 @@ function QuantumSystem(
 
     H = a -> H_drift + sum(a .* H_drives)
 
-    𝒟 = sum(conj(L) ⊗ L - 1 / 2 * ad_vec(L'L, anti=true) for L ∈ dissipation_operators)
-    𝒟̃ = sparse(iso(𝒟))
+    𝒟 = sum(
+        kron(conj(L), L) - 1 / 2 * Isomorphisms.ad_vec(L'L, anti=true) 
+        for L ∈ dissipation_operators
+    )
+    𝒟̃ = sparse(Isomorphisms.iso(𝒟))
 
-    G = a -> Isomorphisms.G(ad_vec(H(a))) + 𝒟̃
+    G = a -> Isomorphisms.G(Isomorphisms.ad_vec(H(a))) + 𝒟̃
 
-    ∂Gs = Isomorphisms.G.(ad_vec.(H_drives))
+    ∂Gs = Isomorphisms.G.(Isomorphisms.ad_vec.(H_drives))
     ∂G = a -> ∂Gs
 
     levels = size(H_drift, 1)
@@ -148,9 +145,6 @@ function QuantumSystem(
 
 end
 
-
-
-
 # ============================================================================= #
 
 @testitem "System creation" begin
@@ -159,6 +153,13 @@ end
     n_drives = length(H_drives)
 
     system = QuantumSystem(H_drift, H_drives)
+    @test system isa QuantumSystem
+
+    # test jacobians
+    a = randn(n_drives)
+    ∂G = system.∂G(a)
+    @test length(∂G) == system.n_drives
+    @test all(∂G .≈ QuantumSystems.generator_jacobian(system.G)(a))
 end
 
 @testitem "System creation with dissipation" begin
@@ -167,18 +168,18 @@ end
     dissipation_operators = [GATES[:Z], GATES[:X]]
 
     system = QuantumSystem(H_drift, H_drives, dissipation_operators)
+    @test system isa QuantumSystem
 
-    # test jacobians
+    # test dissipation
+    @test_skip "TODO"
+
+    # test jacobians (disspiation is constant)
     a = randn(system.n_drives)
     ∂G = system.∂G(a)
     @test length(∂G) == system.n_drives
     @test all(∂G .≈ QuantumSystems.generator_jacobian(system.G)(a))
+    
 end
-
-
-
-
-
 
 
 end

@@ -1,6 +1,6 @@
 module Isomorphisms
 
-# Export state transformations
+# Export state isomorphisms
 export mat
 export ket_to_iso
 export iso_to_ket
@@ -12,6 +12,8 @@ export operator_to_iso_vec
 export iso_operator_to_iso_vec
 export iso_operator_to_operator
 export operator_to_iso_operator
+
+# Do not export Hamiltonian isomorphisms
 
 using LinearAlgebra
 using SparseArrays
