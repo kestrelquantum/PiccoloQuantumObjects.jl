@@ -14,10 +14,8 @@ export iso_dm
 export ad_vec
 
 using LinearAlgebra
-using SparseArrays
 using TestItemRunner
 
-using ..QuantumObjectUtils
 
 @doc raw"""
     mat(x::AbstractVector)
@@ -40,15 +38,14 @@ end
 
 Convert a ket vector `ψ` into a complex vector with real and imaginary parts.
 """
-ket_to_iso(ψ)::Vector{Float64} = [real(ψ); imag(ψ)]
+ket_to_iso(ψ) = [real(ψ); imag(ψ)]
 
 @doc raw"""
     iso_to_ket(ψ̃)
 
 Convert a complex vector `ψ̃` with real and imaginary parts into a ket vector.
 """
-iso_to_ket(ψ̃)::Vector{ComplexF64} =
-    ψ̃[1:div(length(ψ̃), 2)] + im * ψ̃[(div(length(ψ̃), 2) + 1):end]
+iso_to_ket(ψ̃) = ψ̃[1:div(length(ψ̃), 2)] + im * ψ̃[(div(length(ψ̃), 2) + 1):end]
 
 # ----------------------------------------------------------------------------- #
 #                             Unitaries                                         #
@@ -61,7 +58,7 @@ Convert a real vector `Ũ⃗` into a complex matrix representing an operator.
 
 Must be differentiable.
 """
-function iso_vec_to_operator(Ũ⃗::AbstractVector{R}) where R
+function iso_vec_to_operator(Ũ⃗::AbstractVector{R}) where R <: Real
     Ũ⃗_dim = div(length(Ũ⃗), 2)
     N = Int(sqrt(Ũ⃗_dim))
     U = Matrix{complex(R)}(undef, N, N)
@@ -78,7 +75,7 @@ Convert a real vector `Ũ⃗` into a real matrix representing an isomorphism op
 
 Must be differentiable.
 """
-function iso_vec_to_iso_operator(Ũ⃗::AbstractVector{R}) where R
+function iso_vec_to_iso_operator(Ũ⃗::AbstractVector{R}) where R <: Real
     N = Int(sqrt(length(Ũ⃗) ÷ 2))
     Ũ = Matrix{R}(undef, 2N, 2N)
     U_real = Matrix{R}(undef, N, N)
@@ -101,7 +98,7 @@ Convert a complex matrix `U` representing an operator into a real vector.
 
 Must be differentiable.
 """
-function operator_to_iso_vec(U::AbstractMatrix{R}) where R
+function operator_to_iso_vec(U::AbstractMatrix{R}) where R <: Number
     N = size(U,1)
     Ũ⃗ = Vector{real(R)}(undef, N^2 * 2)
     for i=0:N-1
@@ -118,14 +115,13 @@ Convert a real matrix `Ũ` representing an isomorphism operator into a real vec
 
 Must be differentiable.
 """
-@views function iso_operator_to_iso_vec(Ũ::AbstractMatrix{R}) where R <: Real
-    return reshape(Ũ[:, 1:end÷2], :)
-    # N = size(Ũ, 1) ÷ 2
-    # Ũ⃗ = zeros(R, N^2 * 2)
-    # for i=0:N-1
-    #     Ũ⃗[i*2N .+ (1:2N)] .= @view Ũ[:, i+1]
-    # end
-    # return Ũ⃗
+function iso_operator_to_iso_vec(Ũ::AbstractMatrix{R}) where R <: Real
+    N = size(Ũ, 1) ÷ 2
+    Ũ⃗ = Vector{R}(undef, N^2 * 2)
+    for i=0:N-1
+        Ũ⃗[i*2N .+ (1:2N)] .= @view Ũ[:, i+1]
+    end
+    return Ũ⃗
 end
 
 iso_operator_to_operator(Ũ) = iso_vec_to_operator(iso_operator_to_iso_vec(Ũ))
@@ -136,10 +132,17 @@ operator_to_iso_operator(U) = iso_vec_to_iso_operator(operator_to_iso_vec(U))
 # Open systems
 # ----------------------------------------------------------------------------- #
 
-function ad_vec(H::AbstractMatrix{<:Number}; anti::Bool=false)
-    Id = sparse(eltype(H), I, size(H)...)
-    return Id ⊗ H - (-1)^anti * conj(H)' ⊗ Id
+function ad_vec(H::AbstractMatrix{R}; anti::Bool=false) where R <: Number
+    Id = sparse(R, I, size(H)...)
+    return kron(Id, H) - (-1)^anti * kron(conj(H)', Id)
 end
+
+"""
+    iso_dm(ρ::AbstractMatrix)
+
+returns the isomorphism `ρ⃗̃ = ket_to_iso(vec(ρ))` of a density matrix `ρ`
+"""
+iso_dm(ρ::AbstractMatrix) = ket_to_iso(vec(ρ))
 
 # ----------------------------------------------------------------------------- #
 # Hamiltonians
@@ -183,25 +186,22 @@ function H(G::AbstractMatrix{<:Number})
     return H_real + 1.0im * H_imag
 end
 
-"""
-    iso_dm(ρ::AbstractMatrix)
 
-returns the isomorphism `ρ⃗̃ = ket_to_iso(vec(ρ))` of a density matrix `ρ`
-"""
-iso_dm(ρ::AbstractMatrix) = ket_to_iso(vec(ρ))
-
-
-
-# =========================================================================== #
+# *************************************************************************** #
 
 @testitem "Test isomorphism utilities" begin
     using LinearAlgebra
     iso_vec = [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0]
-    @test mat([1.0, 2.0, 3.0, 4.0]) == [1.0 3.0; 2.0 4.0]
+    @test mat([1.0, 2.0, 3.0, 4.0]) == [1.0 3.0; 
+                                        2.0 4.0]
     @test ket_to_iso([1.0, 2.0]) == [1.0, 2.0, 0.0, 0.0]
     @test iso_to_ket([1.0, 2.0, 0.0, 0.0]) == [1.0, 2.0]
-    @test iso_vec_to_operator(iso_vec) == [1.0 0.0; 0.0 1.0]
-    @test iso_vec_to_iso_operator(iso_vec) == [1.0 0.0 -0.0 -0.0; 0.0 1.0 -0.0 -0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0]
+    @test iso_vec_to_operator(iso_vec) == [1.0 0.0;
+                                           0.0 1.0]
+    @test iso_vec_to_iso_operator(iso_vec) == [1.0 0.0 0.0 0.0; 
+                                               0.0 1.0 0.0 0.0; 
+                                               0.0 0.0 1.0 0.0; 
+                                               0.0 0.0 0.0 1.0]
     @test operator_to_iso_vec(Complex[1.0 0.0; 0.0 1.0]) == iso_vec
     @test iso_operator_to_iso_vec(iso_vec_to_iso_operator(iso_vec)) == iso_vec
 end

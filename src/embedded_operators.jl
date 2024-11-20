@@ -20,7 +20,6 @@ using ..CompositeQuantumSystems
 
 using LinearAlgebra
 using TestItemRunner
-using TrajectoryIndexingUtils
 
 
 @doc raw"""
@@ -139,10 +138,8 @@ function Base.kron(op1::EmbeddedOperator, op2::EmbeddedOperator)
     indices = get_subspace_indices(
         [op1.subspace_indices, op2.subspace_indices], levels
     )
-    return EmbeddedOperator(unembed(op1) ⊗ unembed(op2), indices, levels)
+    return EmbeddedOperator(kron(unembed(op1), unembed(op2)), indices, levels)
 end
-
-Isomorphisms.:⊗(A::EmbeddedOperator, B::EmbeddedOperator) = kron(A, B)
 
 function EmbeddedOperator(
     op::AbstractMatrix{<:Number},
@@ -420,7 +417,7 @@ end
     @test x2 == id
 
     # Embed X twice
-    op2 = op ⊗ op
+    op2 = kron(op, op)
     embedded_op2 = [
         0  0  0  0  1  0  0  0  0;
         0  0  0  1  0  0  0  0  0;
@@ -445,7 +442,7 @@ end
     a = [0 1 0; 0 0 1; 0 0 0]
     σ_x = a + a'
     σ_y = -1im*(a - a')
-    system = QuantumSystem([σ_x ⊗ σ_x, σ_y ⊗ σ_y])
+    system = QuantumSystem([kron(σ_x, σ_x), kron(σ_y, σ_y)])
 
     op_explicit_qubit = EmbeddedOperator(
         CZ,
@@ -467,7 +464,7 @@ end
 @testitem "Embedded operator kron" begin
     Z = GATES[:Z]
     Ẑ = EmbeddedOperator(Z, 1:2, [4])
-    @test unembed(Ẑ ⊗ Ẑ) == Z ⊗ Z
+    @test unembed(kron(Ẑ, Ẑ)) == kron(Z, Z)
 end
 
 
