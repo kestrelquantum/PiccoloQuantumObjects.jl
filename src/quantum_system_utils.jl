@@ -305,9 +305,9 @@ end
     @test length(basis) == 2 * (2^2 - 1)
 end
 
-
 @testitem "Lie Algebra reachability" begin
     using LinearAlgebra
+    ⊗ = kron
 
     H_ops = Dict(
         "X" => GATES[:X],
