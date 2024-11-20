@@ -21,6 +21,9 @@ using ..CompositeQuantumSystems
 using LinearAlgebra
 using TestItemRunner
 
+# ----------------------------------------------------------------------------- #
+#                             Embedding operations                              #
+# ----------------------------------------------------------------------------- #
 
 @doc raw"""
     embed(matrix::Matrix{ComplexF64}, subspace_indices::AbstractVector{Int}, levels::Int)
@@ -58,10 +61,11 @@ end
 #                             Embedded Operator                                 #
 # ----------------------------------------------------------------------------- #
 
-"""
+@doc """
     EmbeddedOperator
 
-Embedded operator type to represent an operator embedded in a subspace of a larger quantum system.
+Embedded operator type to represent an operator embedded in a subspace of a larger 
+quantum system.
 
 # Fields
 - `operator::Matrix{ComplexF64}`: Embedded operator of size `prod(subsystem_levels) x prod(subsystem_levels)`.
@@ -80,8 +84,39 @@ struct EmbeddedOperator
 
     # Arguments
     - `op::Matrix{<:Number}`: Operator to embed.
-    - `subspace_indices::AbstractVector{Int}`: Indices of the subspace to embed the operator in. e.g. `get_subspace_indices([1:2, 1:2], [3, 3])`.
-    - `subsystem_levels::AbstractVector{Int}`: Levels of the subsystems in the composite system. e.g. `[3, 3]` for two 3-level systems.
+    - `subspace_indices::AbstractVector{Int}`: Indices of the subspace to embed the operator in. 
+        e.g. `get_subspace_indices([1:2, 1:2], [3, 3])`.
+    - `subsystem_levels::AbstractVector{Int}`: Levels of the subsystems in the composite system.
+        e.g. `[3, 3]` for two 3-level systems.
+
+    # Example
+
+    ```julia
+    julia> operator = kron([0 1; 1 0], [0 1; 1 0])
+    4×4 Matrix{Int64}:
+        0  0  0  1
+        0  0  1  0
+        0  1  0  0
+        1  0  0  0
+    julia> subspace_indices = get_subspace_indices([1:2, 1:2], [3, 3])
+    4-element Vector{Int64}:
+        1
+        2
+        4
+        5
+    julia> subsystem_levels = [3, 3]
+    julia> EmbeddedOperator(operator, subspace_indices, subsystem_levels)
+    9×9 Matrix{ComplexF64}:
+        0.0  0.0  0.0  0.0  1.0  0.0  0.0  0.0  0.0
+        0.0  0.0  0.0  1.0  0.0  0.0  0.0  0.0  0.0
+        0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
+        0.0  1.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
+        1.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
+        0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
+        0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
+        0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
+        0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0  0.0
+    ```
     """
     function EmbeddedOperator(
         op::Matrix{<:Number},
@@ -94,7 +129,7 @@ struct EmbeddedOperator
     end
 end
 
-"""
+@doc """
     AbstractPiccoloOperator
 
 Union type for operators.
@@ -144,11 +179,12 @@ end
 function EmbeddedOperator(
     op::AbstractMatrix{<:Number},
     system::QuantumSystem;
-    subspace=1:size(op, 1)
+    subspace_indices=1:size(op, 1),
+    levels=system.levels
 )
     return EmbeddedOperator(
         op,
-        get_subspace_indices(subspace, system.levels),
+        get_subspace_indices(subspace_indices, levels),
         [system.levels]
     )
 end
@@ -238,8 +274,10 @@ get_subspace_indices(subspaces, subsystem_levels) == [1, 2, 4, 5]
 
 # Arguments
 
-- `subspaces::Vector{<:AbstractVector{Int}}`: Subspaces to get indices for. e.g. `[1:2, 1:2]`.
-- `subsystem_levels::AbstractVector{Int}`: Levels of the subsystems in the composite system. e.g. `[3, 3]`. Each element corresponds to a subsystem.
+- `subspaces::Vector{<:AbstractVector{Int}}`: Subspaces to get indices for.
+    e.g. `[1:2, 1:2]`.
+- `subsystem_levels::AbstractVector{Int}`: Levels of the composite subsystems,
+    e.g. `[3, 3]`. Each element corresponds to a subsystem for which subspaces must be provided.
 """
 function get_subspace_indices(
     subspaces::Vector{<:AbstractVector{Int}},
@@ -255,9 +293,17 @@ end
 """
     get_subspace_indices(subspace::AbstractVector{Int}, levels::Int)
 
-Get the indices for the subspace of simple, non-composite, quantum system. For example:
+Get the indices for the subspace of simple, non-composite, quantum system.
+
+# Example
 ```julia
-get_subspace_indices([1, 2], 3) == [1, 2]
+
+julia> get_subspace_indices([1, 2], 3)
+[1, 2]
+
+julia> get_subspace_indices([1:2, 1:2], [3, 3])
+[1, 2, 4, 5]
+
 ```
 
 # Arguments
@@ -270,7 +316,9 @@ get_subspace_indices(subspace::AbstractVector{Int}, levels::Int) =
 """
     get_subspace_indices(levels::AbstractVector{Int}; subspace=1:2, kwargs...)
 
-Get the indices for the subspace of composite quantum system. This is a convenience function that allows to specify the subspace as a range that is constant for every subsystem, which defaults to `1:2`, that is qubit systems.
+Get the indices for the subspace of composite quantum system. This convenience function
+allows just the specification of the levels to use, using a subspace that is constant for
+every subsystem. The default value of the subspace is `1:2` for qubit systems.
 
 # Arguments
 - `levels::AbstractVector{Int}`: Levels of the subsystems in the composite system. e.g. `[3, 3]`.
@@ -278,8 +326,8 @@ Get the indices for the subspace of composite quantum system. This is a convenie
 # Keyword Arguments
 - `subspace::AbstractVector{Int}`: Subspace to get indices for. e.g. `1:2`.
 """
-get_subspace_indices(levels::AbstractVector{Int}; subspace=1:2) =
-    get_subspace_indices(fill(subspace, length(levels)), levels)
+get_subspace_indices(levels::AbstractVector{Int}; subspace_indices=1:2) =
+    get_subspace_indices(fill(subspace_indices, length(levels)), levels)
 
 function get_subspace_enr_indices(excitation_restriction::Int, subsystem_levels::AbstractVector{Int})
     # excitation_number uses baseline of zero
@@ -394,7 +442,7 @@ end
 end
 
 @testitem "Subspace Leakage Indices" begin
-    # TODO: Implement tests
+    @test_skip "TODO"
 end
 
 @testitem "Embedded operator" begin
@@ -447,7 +495,7 @@ end
     op_explicit_qubit = EmbeddedOperator(
         CZ,
         system,
-        subspace=get_subspace_indices([1:2, 1:2], [3, 3])
+        subspace_indices=get_subspace_indices([1:2, 1:2], [3, 3])
     )
     op_implicit_qubit = EmbeddedOperator(CZ, system)
     # This does not work (implicit puts indicies in 1:4)
