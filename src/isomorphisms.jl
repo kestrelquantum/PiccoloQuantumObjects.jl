@@ -100,6 +100,27 @@ end
 Convert a complex matrix `U` representing an operator into a real vector.
 
 Must be differentiable.
+
+# Example 
+
+```jldoctest
+julia> U = [1 5; 2 6] + im * [3 7; 4 8]
+2×2 Matrix{Complex{Int64}}:
+ 1+3im  5+7im
+ 2+4im  6+8im
+
+julia> operator_to_iso_vec(U)
+8-element Vector{Int64}:
+    1
+    2
+    3
+    4
+    5
+    6
+    7
+    8
+
+```
 """
 function operator_to_iso_vec(U::AbstractMatrix{R}) where R <: Number
     N = size(U,1)
