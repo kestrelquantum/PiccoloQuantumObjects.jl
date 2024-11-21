@@ -10,7 +10,6 @@ export get_subspace_enr_indices
 export get_subspace_leakage_indices
 export get_iso_vec_leakage_indices
 export get_iso_vec_subspace_indices
-export get_subspace_identity
 
 using ..Gates
 using ..Isomorphisms
@@ -25,35 +24,28 @@ using TestItemRunner
 #                             Embedding operations                              #
 # ----------------------------------------------------------------------------- #
 
-@doc raw"""
-    embed(matrix::Matrix{ComplexF64}, subspace_indices::AbstractVector{Int}, levels::Int)
-
-Embed an operator $U$ in the subspace of a larger system $\mathcal{X} = \mathcal{X}_{\text{subspace}} \oplus \mathcal{X}_{\text{leakage}}$ which is composed of matrices of size $\text{levels} \times \text{levels}$.
-
-# Arguments
-- `matrix::Matrix{ComplexF64}`: Operator to embed.
-- `subspace_indices::AbstractVector{Int}`: Indices of the subspace to embed the operator in.
-- `levels::Int`: Total number of levels in the system.
 """
-function embed(op::Matrix{ComplexF64}, subspace_indices::AbstractVector{Int}, levels::Int)
-    @assert size(op, 1) == size(op, 2) "Operator must be square."
-    op_embedded = zeros(ComplexF64, levels, levels)
-    op_embedded[subspace_indices, subspace_indices] = op
+    embed(operator::AbstractMatrix{<:Number}, subspace_indices::AbstractVector{Int}, levels::Int)
+
+Embed an `operator` at the `subspace_indices` in a larger matrix of size `levels x levels`.
+"""
+function embed(
+    operator::AbstractMatrix{R}, subspace_indices::AbstractVector{Int}, levels::Int
+) where R <: Number
+    @assert size(operator, 1) == size(operator, 2) "Operator must be square."
+    op_embedded = zeros(R, levels, levels)
+    op_embedded[subspace_indices, subspace_indices] = operator
     return op_embedded
 end
 
-@doc raw"""
-    unembed(matrix::AbstractMatrix, subspace_indices::AbstractVector{Int})
+"""
+    unembed(matrix::AbstractMatrix{<:Number}, subspace_indices::AbstractVector{Int})
 
-Unembed an operator $U$ from a subspace of a larger system $\mathcal{X} = \mathcal{X}_{\text{subspace}} \oplus \mathcal{X}_{\text{leakage}}$ which is composed of matrices of size $\text{levels} \times \text{levels}$.
+Unembed a subspace operator from the `matrix`.
 
 This is equivalent to calling `matrix[subspace_indices, subspace_indices]`.
-
-# Arguments
-- `matrix::AbstractMatrix`: Operator to unembed.
-- `subspace_indices::AbstractVector{Int}`: Indices of the subspace to unembed the operator from.
 """
-function unembed(matrix::AbstractMatrix, subspace_indices::AbstractVector{Int})
+function unembed(matrix::AbstractMatrix{<:Number}, subspace_indices::AbstractVector{Int})
     return matrix[subspace_indices, subspace_indices]
 end
 
@@ -61,11 +53,17 @@ end
 #                             Embedded Operator                                 #
 # ----------------------------------------------------------------------------- #
 
-@doc """
+@doc raw"""
     EmbeddedOperator
 
 Embedded operator type to represent an operator embedded in a subspace of a larger 
 quantum system.
+
+The larger system $\mathcal{X}$ can be decomposed into its subspace and leakage components:
+
+```math
+    \mathcal{X} = \mathcal{X}_{\text{subspace}} \oplus \mathcal{X}_{\text{leakage}},
+```
 
 # Fields
 - `operator::Matrix{ComplexF64}`: Embedded operator of size `prod(subsystem_levels) x prod(subsystem_levels)`.
@@ -80,18 +78,12 @@ struct EmbeddedOperator
     @doc raw"""
         EmbeddedOperator(op::Matrix{<:Number}, subspace_indices::AbstractVector{Int}, subsystem_levels::AbstractVector{Int})
 
-    Create an embedded operator. The operator `op` is embedded in the subspace defined by `subspace_indices` in `subsystem_levels`.
-
-    # Arguments
-    - `op::Matrix{<:Number}`: Operator to embed.
-    - `subspace_indices::AbstractVector{Int}`: Indices of the subspace to embed the operator in. 
-        e.g. `get_subspace_indices([1:2, 1:2], [3, 3])`.
-    - `subsystem_levels::AbstractVector{Int}`: Levels of the subsystems in the composite system.
-        e.g. `[3, 3]` for two 3-level systems.
+    Create an embedded operator. The operator `op` is embedded in the subspace defined by 
+    `subspace_indices` in `subsystem_levels`.
 
     # Example
 
-    ```julia
+    ```jldoctest
     julia> operator = kron([0 1; 1 0], [0 1; 1 0])
     4×4 Matrix{Int64}:
         0  0  0  1
@@ -129,52 +121,23 @@ struct EmbeddedOperator
     end
 end
 
-@doc """
+# ----------------------------------------------------------------------------- #
+#                             AbstractPiccoloOperator                           #
+# ----------------------------------------------------------------------------- #
+
+"""
     AbstractPiccoloOperator
 
 Union type for operators.
 """
 const AbstractPiccoloOperator = Union{AbstractMatrix{<:Number}, EmbeddedOperator}
 
+# ----------------------------------------------------------------------------- #
+#                  Additional EmbeddedOperator constructors                     #
+# ----------------------------------------------------------------------------- #
+
 EmbeddedOperator(op::Matrix{<:Number}, subspace_indices::AbstractVector{Int}, levels::Int) =
     EmbeddedOperator(op, subspace_indices, [levels])
-
-function embed(matrix::Matrix{ComplexF64}, op::EmbeddedOperator)
-    return embed(matrix, op.subspace_indices, prod(op.subsystem_levels))
-end
-
-function unembed(op::EmbeddedOperator)::Matrix{ComplexF64}
-    return op.operator[op.subspace_indices, op.subspace_indices]
-end
-
-function unembed(matrix::AbstractMatrix, op::EmbeddedOperator)
-    return matrix[op.subspace_indices, op.subspace_indices]
-end
-
-Base.size(op::EmbeddedOperator) = size(op.operator)
-Base.size(op::EmbeddedOperator, dim::Union{Int, Nothing}) = size(op.operator, dim)
-
-function Base.:*(
-    op1::EmbeddedOperator,
-    op2::EmbeddedOperator
-)
-    @assert size(op1) == size(op2) "Operators must be of the same size."
-    @assert op1.subspace_indices == op2.subspace_indices "Operators must have the same subspace."
-    @assert op1.subsystem_levels == op2.subsystem_levels "Operators must have the same subsystem levels."
-    return EmbeddedOperator(
-        unembed(op1) * unembed(op2),
-        op1.subspace_indices,
-        op1.subsystem_levels
-    )
-end
-
-function Base.kron(op1::EmbeddedOperator, op2::EmbeddedOperator)
-    levels = [size(op1, 1), size(op2, 2)]
-    indices = get_subspace_indices(
-        [op1.subspace_indices, op2.subspace_indices], levels
-    )
-    return EmbeddedOperator(kron(unembed(op1), unembed(op2)), indices, levels)
-end
 
 function EmbeddedOperator(
     op::AbstractMatrix{<:Number},
@@ -235,7 +198,10 @@ function EmbeddedOperator(
 end
 
 function EmbeddedOperator(op::Symbol, args...; kwargs...)
-    @assert op ∈ keys(GATES) "Operator must be a valid gate. See QuantumCollocation.QuantumObjectUtils.GATES dict for available gates."
+    if op ∉ keys(gates)
+        throw(ArgumentError("Operator must be a valid gate. "
+            *"See PiccoloQuantumObjects.gates.GATES dict for available gates."))
+    end
     return EmbeddedOperator(GATES[op], args...; kwargs...)
 end
 
@@ -252,35 +218,112 @@ function EmbeddedOperator(
 end
 
 # ----------------------------------------------------------------------------- #
+#                           EmbeddedOperator operations                         #
+# ----------------------------------------------------------------------------- #
+
+"""
+    embed(matrix::AbstractMatrix{<:Number}, op::EmbeddedOperator)
+
+Embed an operator `matrix` in the subspace of a larger system defined by `op`.
+"""
+function embed(matrix::AbstractMatrix{<:Number}, op::EmbeddedOperator)
+    return embed(matrix, op.subspace_indices, prod(op.subsystem_levels))
+end
+
+"""
+    unembed(op::EmbeddedOperator)::Matrix{ComplexF64}
+
+Unembed an embedded operator, returning the original operator.
+"""
+function unembed(op::EmbeddedOperator)::Matrix{ComplexF64}
+    return op.operator[op.subspace_indices, op.subspace_indices]
+end
+
+"""
+    unembed(matrix::AbstractMatrix, op::EmbeddedOperator)
+
+Unembed an operator `matrix` from the subspace defined by `op`.
+"""
+function unembed(matrix::AbstractMatrix{<:Number}, op::EmbeddedOperator)
+    return matrix[op.subspace_indices, op.subspace_indices]
+end
+
+Base.size(op::EmbeddedOperator) = size(op.operator)
+Base.size(op::EmbeddedOperator, dim::Union{Int, Nothing}) = size(op.operator, dim)
+
+function Base.:*(op1::EmbeddedOperator, op2::EmbeddedOperator)
+    @assert size(op1) == size(op2) "Operators must be of the same size."
+    @assert op1.subspace_indices == op2.subspace_indices "Operators must have the same subspace."
+    @assert op1.subsystem_levels == op2.subsystem_levels "Operators must have the same subsystem levels."
+    return EmbeddedOperator(
+        unembed(op1) * unembed(op2),
+        op1.subspace_indices,
+        op1.subsystem_levels
+    )
+end
+
+function Base.kron(op1::EmbeddedOperator, op2::EmbeddedOperator)
+    levels = [size(op1, 1), size(op2, 2)]
+    indices = get_subspace_indices(
+        [op1.subspace_indices, op2.subspace_indices], levels
+    )
+    return EmbeddedOperator(kron(unembed(op1), unembed(op2)), indices, levels)
+end
+
+# ----------------------------------------------------------------------------- #
 #                            Subspace Indices                                   #
 # ----------------------------------------------------------------------------- #
 
-basis_labels(subsystem_levels::AbstractVector{Int}; baseline=1) =
+basis_labels(subsystem_levels::AbstractVector{Int}; baseline::Int=1) =
     kron([""], [string.(baseline:levels - 1 + baseline) for levels ∈ subsystem_levels]...)
 
 basis_labels(subsystem_level::Int; kwargs...) = basis_labels([subsystem_level]; kwargs...)
 
 """
     get_subspace_indices(subspaces::Vector{<:AbstractVector{Int}}, subsystem_levels::AbstractVector{Int})
+    get_subspace_indices(subspace::AbstractVector{Int}, levels::Int)
+    get_subspace_indices(levels::AbstractVector{Int}; subspace=1:2)
 
-Get the indices for the subspace of composite quantum system.
+Get the indices for the provided subspace(s) of a composite quantum system.
 
-Example: for the two-qubit subspace of two 3-level systems:
-```julia
-subspaces = [1:2, 1:2]
-subsystem_levels = [3, 3]
-get_subspace_indices(subspaces, subsystem_levels) == [1, 2, 4, 5]
+# Example
+
+A two-qubit subspace of two 3-level systems:
+```jldoctest
+julia> subspaces = [1:2, 1:2]
+julia> subsystem_levels = [3, 3]
+julia> get_subspace_indices(subspaces, subsystem_levels)
+4-element Vector{Int64}:
+    1
+    2
+    4
+    5
 ```
 
-# Arguments
+A two qubit subspace of a single 3-level system:
+```jldoctest
+julia> get_subspace_indices([1, 2], 3)
+[1, 2]
 
-- `subspaces::Vector{<:AbstractVector{Int}}`: Subspaces to get indices for.
-    e.g. `[1:2, 1:2]`.
-- `subsystem_levels::AbstractVector{Int}`: Levels of the composite subsystems,
-    e.g. `[3, 3]`. Each element corresponds to a subsystem for which subspaces must be provided.
+julia> get_subspace_indices([1:2, 1:2], [3, 3])
+[1, 2, 4, 5]
+````
+
+Two 3-level systems with a default (qubit) subspace:
+```jldoctest
+julia> get_subspace_indices([3, 3])
+4-element Vector{Int64}:
+    1
+    2
+    4
+    5
+```
+
 """
+function get_subspace_indices end
+
 function get_subspace_indices(
-    subspaces::Vector{<:AbstractVector{Int}},
+    subspaces::AbstractVector{<:AbstractVector{Int}},
     subsystem_levels::AbstractVector{Int}
 )
     @assert length(subspaces) == length(subsystem_levels)
@@ -290,45 +333,31 @@ function get_subspace_indices(
     )
 end
 
-"""
-    get_subspace_indices(subspace::AbstractVector{Int}, levels::Int)
-
-Get the indices for the subspace of simple, non-composite, quantum system.
-
-# Example
-```julia
-
-julia> get_subspace_indices([1, 2], 3)
-[1, 2]
-
-julia> get_subspace_indices([1:2, 1:2], [3, 3])
-[1, 2, 4, 5]
-
-```
-
-# Arguments
-- `subspace::AbstractVector{Int}`: Subspace to get indices for. e.g. `[1, 2]`.
-- `levels::Int`: Levels of the subsystem. e.g. `3`.
-"""
 get_subspace_indices(subspace::AbstractVector{Int}, levels::Int) =
     get_subspace_indices([subspace], [levels])
 
+get_subspace_indices(levels::AbstractVector{Int}; subspace=1:2) =
+    get_subspace_indices(fill(subspace, length(levels)), levels)
+
 """
-    get_subspace_indices(levels::AbstractVector{Int}; subspace=1:2, kwargs...)
+    get_subspace_enr_indices(excitation_restriction::Int, subsystem_levels::AbstractVector{Int})
 
-Get the indices for the subspace of composite quantum system. This convenience function
-allows just the specification of the levels to use, using a subspace that is constant for
-every subsystem. The default value of the subspace is `1:2` for qubit systems.
+Get the indices for the subspace of composite quantum system with an excitation restriction.
 
-# Arguments
-- `levels::AbstractVector{Int}`: Levels of the subsystems in the composite system. e.g. `[3, 3]`.
+# Example
 
-# Keyword Arguments
-- `subspace::AbstractVector{Int}`: Subspace to get indices for. e.g. `1:2`.
+Choose only the ground state and single excitation states of two 3-level systems:
+```jldoctest
+
+julia> get_subspace_enr_indices(1, [3, 3])
+3-element Vector{Int64}:
+    1
+    2
+    4
+
+```
+
 """
-get_subspace_indices(levels::AbstractVector{Int}; subspace_indices=1:2) =
-    get_subspace_indices(fill(subspace_indices, length(levels)), levels)
-
 function get_subspace_enr_indices(excitation_restriction::Int, subsystem_levels::AbstractVector{Int})
     # excitation_number uses baseline of zero
     return findall(
@@ -337,12 +366,46 @@ function get_subspace_enr_indices(excitation_restriction::Int, subsystem_levels:
     )
 end
 
+"""
+    get_subspace_leakage_indices(subspaces::AbstractVector{<:AbstractVector{Int}}, subsystem_levels::AbstractVector{Int})
+    get_subspace_leakage_indices(subspace::AbstractVector{Int}, levels::Int)
+    get_subspace_leakage_indices(op::EmbeddedOperator)
+
+Get the indices for the states that are outside of the provided subspace(s).
+
+# Example
+
+```jldoctest
+
+julia> subspaces = [1:2, 1:2]
+julia> subsystem_levels = [3, 3]
+julia> get_subspace_leakage_indices(subspaces, subsystem_levels)
+5-element Vector{Int64}:
+    3
+    6
+    7
+    8
+    9
+
+julia> subspace = 1:2
+julia> levels = 3
+julia> get_subspace_leakage_indices(subspace, levels)
+1-element Vector{Int64}:
+    3
+
+```
+
+"""
+function get_subspace_leakage_indices end
+
 function get_subspace_leakage_indices(
-    subspaces::Vector{<:AbstractVector{Int}},
-    subsystem_levels::AbstractVector{Int};
+    subspaces::AbstractVector{<:AbstractVector{Int}},
+    subsystem_levels::AbstractVector{<:Int}
 )
-    subspace_indices = get_subspace_indices(subspaces, subsystem_levels)
-    return get_subspace_leakage_indices(subspace_indices)
+    return get_subspace_leakage_indices(
+        get_subspace_indices(subspaces, subsystem_levels),
+        prod(subsystem_levels)
+    )
 end
 
 get_subspace_leakage_indices(subspace_indices::AbstractVector{Int}, levels::Int) =
@@ -351,11 +414,16 @@ get_subspace_leakage_indices(subspace_indices::AbstractVector{Int}, levels::Int)
 get_subspace_leakage_indices(op::EmbeddedOperator) =
     get_subspace_leakage_indices(op.subspace_indices, size(op)[1])
 
-get_iso_vec_subspace_indices(op::EmbeddedOperator) =
-    get_iso_vec_subspace_indices(op.subspace_indices, op.subsystem_levels)
+"""
+    get_iso_vec_subspace_indices(subspace_indices::AbstractVector{Int}, subsystem_levels::AbstractVector{Int})
+    get_iso_vec_subspace_indices(op::EmbeddedOperator)
 
-get_iso_vec_leakage_indices(op::EmbeddedOperator) =
-    get_iso_vec_leakage_indices(op.subspace_indices, op.subsystem_levels)
+Get the indices for the subspace in the isomorphic vector space for operators.
+
+# TODO: Example
+
+"""
+function get_iso_vec_subspace_indices end
 
 function get_iso_vec_subspace_indices(
     subspace_indices::AbstractVector{Int},
@@ -373,6 +441,21 @@ function get_iso_vec_subspace_indices(
     end
     return iso_subspace_indices
 end
+
+get_iso_vec_subspace_indices(op::EmbeddedOperator) =
+    get_iso_vec_subspace_indices(op.subspace_indices, op.subsystem_levels)
+
+
+"""
+    get_iso_vec_leakage_indices(subspace_indices::AbstractVector{Int}, subsystem_levels::AbstractVector{Int})
+    get_iso_vec_leakage_indices(op::EmbeddedOperator)
+
+Get the indices for the leakage in the isomorphic vector space for operators.
+
+# TODO: Example
+
+"""
+function get_iso_vec_leakage_indices end
 
 function get_iso_vec_leakage_indices(
     subspace_indices::AbstractVector{Int},
@@ -392,13 +475,8 @@ function get_iso_vec_leakage_indices(
     return iso_leakage_indices
 end
 
-function get_subspace_identity(op::EmbeddedOperator)
-    return embed(
-        Matrix{ComplexF64}(I(length(op.subspace_indices))),
-        op.subspace_indices,
-        size(op, 1)
-    )
-end
+get_iso_vec_leakage_indices(op::EmbeddedOperator) =
+    get_iso_vec_leakage_indices(op.subspace_indices, op.subsystem_levels)
 
 # =========================================================================== #
 
@@ -442,10 +520,16 @@ end
 end
 
 @testitem "Subspace Leakage Indices" begin
-    @test_skip "TODO"
+    leakage = get_subspace_leakage_indices([1:2, 1:2], [3, 3])
+    @test leakage == [3, 6, 7, 8, 9]
+
+    leakage = get_subspace_leakage_indices([1, 2], 3)
+    @test leakage == [3]
 end
 
 @testitem "Embedded operator" begin
+    using LinearAlgebra: I
+
     # Embed X
     op = Matrix{ComplexF64}([0 1; 1 0])
     embedded_op = Matrix{ComplexF64}([0 1 0 0; 1 0 0 0; 0 0 0 0; 0 0 0 0])
@@ -461,7 +545,7 @@ end
 
     # X^2 = I
     x2 = (embedded_op_struct * embedded_op_struct).operator
-    id = get_subspace_identity(embedded_op_struct)
+    id = embed(I(2), embedded_op_struct)
     @test x2 == id
 
     # Embed X twice
