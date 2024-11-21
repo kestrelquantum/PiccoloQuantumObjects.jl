@@ -321,12 +321,12 @@ end
 
     @test iso(-im * H_complex) ≈ G_H
 
-    H = [0 1; 1 0]
-    ad_H = ad_vec(H)
+    op = [0 1; 1 0]
+    ad_H = ad_vec(op)
     @test ad_H ≈ [0 1 -1 0; 1 0 0 -1; -1 0 0 1; 0 -1 1 0]
 
-    H = [0 -im; im 0]
-    ad_H = ad_vec(H)
+    op = [0 -im; im 0]
+    ad_H = ad_vec(op)
     @test ad_H ≈ [0 -im -im 0; im 0 0 -im; im 0 0 -im; 0 im im 0]
 end
 
