@@ -555,7 +555,7 @@ end
 get_iso_vec_leakage_indices(op::EmbeddedOperator; kwargs...) =
     get_iso_vec_leakage_indices(op.subspace, size(op, 1); kwargs...)
 
-# =========================================================================== #
+# ****************************************************************************** #
 
 @testitem "Embedded operator" begin
     using LinearAlgebra: I

@@ -248,7 +248,6 @@ function ad_vec(H::AbstractMatrix{R}; anti::Bool=false) where R <: Number
     return kron(Id, H) - (-1)^anti * kron(conj(H)', Id)
 end
 
-
 # *************************************************************************** #
 
 @testitem "Test ket isomorphisms" begin

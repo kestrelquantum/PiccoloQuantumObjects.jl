@@ -255,4 +255,8 @@ function (csys::CompositeQuantumSystem)(;
     )
 end
 
+# ****************************************************************************** #
+
+# TODO: Implement `CompositeQuantumSystem` tests
+
 end

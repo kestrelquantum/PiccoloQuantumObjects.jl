@@ -272,7 +272,7 @@ function create(levels::Int)
     return collect(annihilate(levels)')
 end
 
-# ============================================================================= #
+# ****************************************************************************** #
 
 @testitem "Test ket_from_bitstring function" begin
     @test ket_from_bitstring("0") == [1, 0]
