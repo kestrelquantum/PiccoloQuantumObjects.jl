@@ -63,6 +63,13 @@ julia> H_drives = [GATES[:X], GATES[:Y]]
 julia> dissipation_operators = [GATES[:Z], annihilate(2)]
 julia> system = QuantumSystem(H_drift, H_drives, dissipation_operators)
 ```
+
+Construct a `QuantumSystem` from a Hamiltonian function and ForwardDiff.jl:
+```jldoctest
+
+julia> H(a) = GATES[:Z] + a[1] * GATES[:X] + a[2] * GATES[:Y]
+julia> system = QuantumSystem(H, 2)
+```
 """
 struct QuantumSystem <: AbstractQuantumSystem
     H::Function
@@ -145,7 +152,7 @@ end
 
 function QuantumSystem(H::Function, n_drives::Int; params=Dict{Symbol, Any}())
     G = a -> Isomorphisms.G(sparse(H(a)))
-    ∂G = generator_jacobian(H)
+    ∂G = generator_jacobian(G)
     levels = size(H(zeros(n_drives)), 1)
     return QuantumSystem(H, G, ∂G, levels, n_drives, params)
 end
@@ -245,6 +252,19 @@ end
 
     @test get_H_drift(sys1) == get_H_drift(sys2) == H_drift
     @test get_H_drives(sys1) == get_H_drives(sys2) == H_drives
+end
+
+@testitem "System creation with Hamiltonian function" begin
+    H(a) = GATES[:Z] + a[1] * GATES[:X] + a[2] * GATES[:Y]
+    system = QuantumSystem(H, 2)
+    @test system isa QuantumSystem
+    @test get_H_drift(system) == GATES[:Z]
+    @test get_H_drives(system) == [GATES[:X], GATES[:Y]]
+
+    # test jacobians
+    compare = QuantumSystem(GATES[:Z], [GATES[:X], GATES[:Y]])
+    a = randn(system.n_drives)
+    @test system.∂G(a) == compare.∂G(a)
 end
 
 @testitem "System creation with dissipation" begin
