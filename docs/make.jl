@@ -8,18 +8,7 @@ push!(LOAD_PATH, joinpath(@__DIR__, "..", "src"))
 
 pages = [
     "Home" => "index.md",
-    "Quickstart Guide" => "generated/quickstart.md",
-    "Contribution Guide" => "contribution_guide.md",
-    "Manual" => [
-        "Problem Templates" => "generated/man/problem_templates.md",
-        "Embedded Operators" => "generated/man/embedded_operators.md",
-    ],
-    "Examples" => [
-        "Two Qubit Gates" => "generated/examples/two_qubit_gates.md",
-        "Multilevel Transmon" => "generated/examples/multilevel_transmon.md",
-    ],
     "Library" => "lib.md",
-    "Release Notes" => "release_notes.md",
 ]
 
 format = Documenter.HTML(;
@@ -55,7 +44,7 @@ for (root, _, files) ∈ walkdir(lit), file ∈ files
 end
 
 makedocs(;
-    modules=[QuantumCollocation],
+    modules=[PiccoloQuantumObjects],
     authors="Aaron Trowbridge <aaron.j.trowbridge@gmail.com> and contributors",
     sitename="PiccoloQuantumObjects.jl",
     format=format,
