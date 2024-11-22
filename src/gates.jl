@@ -1,7 +1,21 @@
 module Gates
 
-export GATES
 export PAULIS
+export GATES
+
+using TestItemRunner
+
+
+const PAULIS = (
+    I = ComplexF64[1 0;
+                    0 1],
+    X = ComplexF64[0 1;
+                    1 0],
+    Y = ComplexF64[0 -im;
+                    im 0],
+    Z = ComplexF64[1 0;
+                    0 -1],
+)
 
 @doc raw"""
 A constant dictionary `GATES` containing common quantum gate matrices as complex-valued matrices. Each gate is represented by its unitary matrix.
@@ -30,48 +44,59 @@ julia> get_gate(:CX)
  0.0+0.0im  0.0+0.0im  1.0+0.0im  0.0+0.0im
 ```
 """
-const GATES = Dict{Symbol, Matrix{ComplexF64}}(
-    :I => [1 0;
-           0 1],
+GATES = (
+    I = PAULIS.I,
 
-    :X => [0 1;
-           1 0],
+    X = PAULIS.X,
 
-    :Y => [0 -im;
-           im 0],
+    Y = PAULIS.Y,
 
-    :Z => [1 0;
-           0 -1],
+    Z = PAULIS.Z,
 
-    :H => [1 1;
-           1 -1]/√2,
+    H = ComplexF64[1 1;
+                    1 -1]/√2,
 
-    :CX => [1 0 0 0;
-            0 1 0 0;
-            0 0 0 1;
-            0 0 1 0],
+    CX = ComplexF64[1 0 0 0;
+                    0 1 0 0;
+                    0 0 0 1;
+                    0 0 1 0],
 
-    :CZ => [1 0 0 0;
-            0 1 0 0;
-            0 0 1 0;
-            0 0 0 -1],
+    CZ = ComplexF64[1 0 0 0;
+                    0 1 0 0;
+                    0 0 1 0;
+                    0 0 0 -1],
 
-    :XI => [0 0 -im 0;
-            0 0 0 -im;
-            -im 0 0 0;
-            0 -im 0 0],
+    XI = ComplexF64[0 0 -im 0;
+                    0 0 0 -im;
+                    -im 0 0 0;
+                    0 -im 0 0],
 
-    :sqrtiSWAP => [1 0 0 0;
-                   0 1/sqrt(2) 1im/sqrt(2) 0;
-                   0 1im/sqrt(2) 1/sqrt(2) 0;
-                   0 0 0 1]
+    sqrtiSWAP = ComplexF64[1 0 0 0;
+                            0 1/√2 1im/√2 0;
+                            0 1im/√2 1/√2 0;
+                            0 0 0 1],
 )
 
-const PAULIS = Dict{Symbol, Matrix{ComplexF64}}(
-    :I => GATES[:I],
-    :X => GATES[:X],
-    :Y => GATES[:Y],
-    :Z => GATES[:Z]
-)
+# ******************************************************************************* #
+
+@testitem "Gates are complex matrices" begin
+    # test call
+    @test GATES.X == [0 1; 1 0]
+    @test GATES[:X] == [0 1; 1 0]
+
+    for k in keys(GATES)
+        @test typeof(GATES[k]) == Matrix{ComplexF64}
+    end
+end
+
+@testitem "Paulis are complex matrices" begin
+    # test call
+    @test PAULIS.X == [0 1; 1 0]
+    @test PAULIS[:X] == [0 1; 1 0]
+    
+    for k in keys(PAULIS)
+        @test typeof(PAULIS[k]) == Matrix{ComplexF64}
+    end
+end
 
 end
