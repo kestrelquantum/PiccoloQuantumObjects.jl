@@ -95,26 +95,6 @@ end
     operator_to_iso_vec(U::AbstractMatrix{ℂ}) where ℂ <: Number
 
 Convert a complex matrix `U` representing an operator into a real vector.
-
-# Examples 
-
-```jldoctest
-julia> U = [1 5; 2 6] + im * [3 7; 4 8]
-2×2 Matrix{Complex{Int64}}:
- 1+3im  5+7im
- 2+4im  6+8im
-
-julia> operator_to_iso_vec(U)
-8-element Vector{Int64}:
-    1
-    2
-    3
-    4
-    5
-    6
-    7
-    8
-```
 """ 
 function operator_to_iso_vec(U::AbstractMatrix{ℂ}) where ℂ <: Number
     N = size(U,1)
@@ -187,35 +167,25 @@ indicates the standard isomorphism of a complex valued matrix:
 \widetilde{H} = \mqty(1 & 0 \\ 0 & 1) \otimes \Re(H) + \mqty(0 & -1 \\ 1 & 0) \otimes \Im(H)
 ```
 
-Note that ``iso(-iH) = G(H)``.
+See also [`Isomorphisms.G`](@ref), [`Isomorphisms.H`](@ref).
 """
 iso(H::AbstractMatrix{<:Number}) = kron(I(2), real(H)) + kron(Im2, imag(H))
 
 @doc raw"""
     G(H::AbstractMatrix)::Matrix{Float64}
 
-Returns the isomorphism of ``-iH``:
+Returns the isomorphism of ``-iH``, i.e. ``G(H) = \text{iso}(-iH)``.
 
-```math
-G(H) = - i \widetilde{H} = \mqty(1 & 0 \\ 0 & 1) \otimes \Im(H) - \mqty(0 & -1 \\ 1 & 0) \otimes \Re(H)
-```
-
-where ``\Im(H)`` and ``\Re(H)`` are the imaginary and real parts of ``H`` and the tilde 
-indicates the standard isomorphism of a complex valued matrix:
-
-```math
-\widetilde{H} = \mqty(1 & 0 \\ 0 & 1) \otimes \Re(H) + \mqty(0 & -1 \\ 1 & 0) \otimes \Im(H)
-```
-
-Note that ``G(H) = \text{iso}(-iH)``.
+See also [`Isomorphisms.iso`](@ref), [`Isomorphisms.H`](@ref).
 """
 G(H::AbstractMatrix{<:Number}) = iso(-im * H)
-
 
 @doc raw"""
     H(G::AbstractMatrix{<:Real})
 
 Returns the inverse of ``G(H) = iso(-iH)``, i.e. returns H.
+
+See also [`Isomorphisms.iso`](@ref), [`Isomorphisms.G`](@ref).
 """
 function H(G::AbstractMatrix{<:Real})
     dim = size(G, 1) ÷ 2

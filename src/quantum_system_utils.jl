@@ -199,7 +199,7 @@ end
 """
     is_reachable(gate, hamiltonians; kwargs...)
 
-Check if the gate is reachable from the given generators.
+Check if the `gate` is reachable using the given `hamiltonians`.
 
 # Arguments
 - `gate::AbstractMatrix`: target gate
@@ -245,34 +245,17 @@ function is_reachable(
 end
 
 """
-    is_reachable(gate, system; kwargs...)
+    is_reachable(gate::AbstractMatrix{<:Number}, system::AbstractQuantumSystem; kwargs...)
 
-Check if the gate is reachable from the given system.
-
-# Arguments
-- `gate::AbstractMatrix`: target gate
-- `system::QuantumSystem`: quantum system
+Check if the `gate` is reachable using the given `system`.
 
 # Keyword Arguments
 - `use_drift::Bool=true`: include drift Hamiltonian in the generators
 - `kwargs...`: keyword arguments for `is_reachable`
-
-# Examples
-
-```jldoctest
-julia> sys = QuantumSystem(PAULIS[:Z], [PAULIS[:X]])
-julia> is_reachable(GATES[:Y], sys)
-true
-
-julia> sys = QuantumSystem([PAULIS[:X]])
-julia> is_reachable(GATES[:Y], sys)
-false
-```
-
 """
 function is_reachable(
     gate::AbstractMatrix{<:Number},
-    system::QuantumSystem;
+    system::AbstractQuantumSystem;
     use_drift::Bool=true,
     kwargs...
 )

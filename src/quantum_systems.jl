@@ -46,7 +46,7 @@ end
 """
     QuantumSystem <: AbstractQuantumSystem
 
-A struct for storing the quantum dynamics and the gradients of the controls.
+A struct for storing quantum dynamics and the appropriate gradients.
 
 # Fields
 - `H::Function`: The Hamiltonian function, excluding dissipation: a -> H(a).
@@ -54,37 +54,6 @@ A struct for storing the quantum dynamics and the gradients of the controls.
 - `∂G::Function`: The generator jacobian function, a -> ∂G(a).
 - `levels::Int`: The number of levels in the system.
 - `n_drives::Int`: The number of drives in the system.
-
-# Examples
-
-Construct a `QuantumSystem` object from the drift and drive Hamiltonian terms:
-
-```jldoctest
-julia> H_drift = GATES[:Z]
-julia> H_drives = [GATES[:X], GATES[:Y]]
-julia> system = QuantumSystem(H_drift, H_drives)
-
-julia> a = randn(system.n_drives)
-```
-
-Construct a `QuantumSystem` with Lindblad operators:
-
-```jldoctest
-julia> H_drift = GATES[:Z]
-
-julia> H_drives = [GATES[:X], GATES[:Y]]
-
-julia> dissipation_operators = [GATES[:Z], annihilate(2)]
-
-julia> system = QuantumSystem(H_drift, H_drives, dissipation_operators)
-```
-
-Construct a `QuantumSystem` from a Hamiltonian function and ForwardDiff.jl:
-```jldoctest
-
-julia> H(a) = GATES[:Z] + a[1] * GATES[:X] + a[2] * GATES[:Y]
-julia> system = QuantumSystem(H, 2)
-```
 """
 struct QuantumSystem <: AbstractQuantumSystem
     H::Function

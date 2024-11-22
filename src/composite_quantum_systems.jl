@@ -22,29 +22,6 @@ using TestItemRunner
 
 Lift an `operator` acting on the `i`-th subsystem within `subsystem_levels` to an operator
 acting on the entire system spanning `subsystem_levels`.
-
-# Examples
-
-Create the a + a' operator acting on the 1st subsystem
-```jldoctest
-julia> subspace_levels = [3, 4]
-
-julia> lift(create(3) + annihilate(3), 1, subspace_levels)
-```
-
-Create the IYII operator by specifying the number of qubits
-```jldoctest
-julia> lift(PAULIS[:Y], 2, 4)
-```
-
-Create the XX operator acting on qubits 3 and 4 in a 5-qubit system
-```jldoctest
-# Specify the subsystem levels
-julia> lift([PAULIS[:X], PAULIS[:X]], [3, 4], [2, 2, 2, 2, 2])
-
-# Or specify the number of qubits
-julia> lift([PAULIS[:X], PAULIS[:X]], [3, 4], 5)
-```
 """
 function lift end
 
