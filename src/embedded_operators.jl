@@ -41,9 +41,8 @@ end
 """
     unembed(matrix::AbstractMatrix{<:Number}, subspace::AbstractVector{Int})
 
-Unembed a subspace operator from the `matrix`.
-
-This is equivalent to calling `matrix[subspace, subspace]`.
+Unembed a subspace operator from the `matrix`. This is equivalent to calling 
+`matrix[subspace, subspace]`.
 """
 function unembed(matrix::AbstractMatrix{<:Number}, subspace::AbstractVector{Int})
     return matrix[subspace, subspace]
@@ -57,16 +56,15 @@ end
     EmbeddedOperator
 
 Embedded operator type to represent an operator embedded in a subspace of a larger 
-quantum system.
-
-The larger system, $\mathcal{X}$, can be decomposed into subspace and leakage components:
-
+quantum system. The larger system, $\mathcal{X}$, can be decomposed into subspace and 
+leakage components:
 ```math
     \mathcal{X} = \mathcal{X}_{\text{subspace}} \oplus \mathcal{X}_{\text{leakage}},
 ```
 
 # Fields
-- `operator::Matrix{ComplexF64}`: Embedded operator of size `prod(subsystem_levels) x prod(subsystem_levels)`.
+- `operator::Matrix{ComplexF64}`: Embedded operator of size 
+    `prod(subsystem_levels) x prod(subsystem_levels)`.
 - `subspace::Vector{Int}`: Indices of the subspace the operator is embedded in.
 - `subsystem_levels::Vector{Int}`: Levels of the subsystems in the composite system.
 """
@@ -81,7 +79,7 @@ struct EmbeddedOperator
     Create an embedded operator. The `operator` is embedded at the `subspace` of the
     system spanned by the `subsystem_levels`.
 
-    # Example
+    # Examples
 
     ```jldoctest
     julia> operator = kron([0 1; 1 0], [0 1; 1 0])
@@ -90,14 +88,17 @@ struct EmbeddedOperator
         0  0  1  0
         0  1  0  0
         1  0  0  0
+
     julia> subspace = get_subspace_indices([1:2, 1:2], [3, 3])
     4-element Vector{Int64}:
         1
         2
         4
         5
+
     julia> subsystem_levels = [3, 3]
-    julia> EmbeddedOperator(operator, subspace, subsystem_levels)
+
+    julia> EmbeddedOperator(operator, subspace, subsystem_levels).operator
     9×9 Matrix{ComplexF64}:
         0.0  0.0  0.0  0.0  1.0  0.0  0.0  0.0  0.0
         0.0  0.0  0.0  1.0  0.0  0.0  0.0  0.0  0.0
@@ -188,6 +189,7 @@ function EmbeddedOperator(
     )
 end
 
+# TODO: TEST & DOCUMENT & FIX
 EmbeddedOperator(
     subspace_operator::AbstractMatrix{<:Number},
     composite_system::CompositeQuantumSystem,
@@ -277,7 +279,7 @@ basis_labels(subsystem_level::Int; kwargs...) = basis_labels([subsystem_level]; 
 
 Get the indices for the provided subspace of the quantum system.
 
-# Example
+# Examples
 
 A two-qubit subspace of two 3-level systems:
 ```jldoctest
@@ -294,10 +296,16 @@ julia> get_subspace_indices(subspaces, subsystem_levels)
 A two qubit subspace of a single 3-level system:
 ```jldoctest
 julia> get_subspace_indices([1, 2], 3)
-[1, 2]
+2-element Vector{Int64}:
+    1
+    2
 
 julia> get_subspace_indices([1:2, 1:2], [3, 3])
-[1, 2, 4, 5]
+4-element Vector{Int64}:
+    1
+    2
+    4
+    5
 ````
 
 Two 3-level systems with a default (qubit) subspace:
@@ -309,7 +317,6 @@ julia> get_subspace_indices([3, 3])
     4
     5
 ```
-
 """
 function get_subspace_indices end
 
@@ -339,7 +346,7 @@ get_subspace_indices(op::EmbeddedOperator) = op.subspace
 
 Get the indices for the subspace of the quantum system with an excitation restriction.
 
-# Example
+# Examples
 
 Choose only the ground state and single excitation states of two 3-level systems:
 ```jldoctest
@@ -349,7 +356,6 @@ julia> get_subspace_enr_indices(1, [3, 3])
     1
     2
     4
-
 ```
 
 """
@@ -370,12 +376,13 @@ end
 Get the indices for the states that are outside of the provided subspace of the quantum
 system.
 
-# Example
+# Examples
 
 ```jldoctest
-
 julia> subspaces = [1:2, 1:2]
+
 julia> subsystem_levels = [3, 3]
+
 julia> get_leakage_indices(subspaces, subsystem_levels)
 5-element Vector{Int64}:
     3
@@ -385,11 +392,12 @@ julia> get_leakage_indices(subspaces, subsystem_levels)
     9
 
 julia> subspace = 1:2
+
 julia> levels = 3
+
 julia> get_leakage_indices(subspace, levels)
 1-element Vector{Int64}:
     3
-
 ```
 
 """
@@ -421,9 +429,10 @@ get_leakage_indices(op::EmbeddedOperator) =
 Get the indices for the subspace in the isomorphic vector space for operators.
 
 ```jldoctest
-
 julia> subspace = 1:2
+
 julia> levels = 3
+
 julia> get_iso_vec_subspace_indices(subspace, levels)
 8-element Vector{Int64}:
     1
@@ -434,7 +443,6 @@ julia> get_iso_vec_subspace_indices(subspace, levels)
     8
     10
     11
-
 ```
 
 """
@@ -480,7 +488,7 @@ get_iso_vec_subspace_indices(op::EmbeddedOperator) =
 
 Get the indices for the leakage in the isomorphic vector space for operators.
 
-# Example
+# Examples
 
 ```jldoctest
 julia> get_iso_vec_leakage_indices(1:2, 3)
@@ -489,9 +497,7 @@ julia> get_iso_vec_leakage_indices(1:2, 3)
     6
     9
     12
-
 ```
-
 """
 function get_iso_vec_leakage_indices end
 

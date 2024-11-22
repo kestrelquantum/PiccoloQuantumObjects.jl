@@ -28,7 +28,9 @@ acting on the entire system spanning `subsystem_levels`.
 Create the a + a' operator acting on the 1st subsystem
 ```jldoctest
 julia> subspace_levels = [3, 4]
+
 julia> lift(create(3) + annihilate(3), 1, subspace_levels)
+```
 
 Create the IYII operator by specifying the number of qubits
 ```jldoctest
@@ -43,7 +45,6 @@ julia> lift([PAULIS[:X], PAULIS[:X]], [3, 4], [2, 2, 2, 2, 2])
 # Or specify the number of qubits
 julia> lift([PAULIS[:X], PAULIS[:X]], [3, 4], 5)
 ```
-
 """
 function lift end
 
@@ -91,7 +92,6 @@ end
 
 A composite quantum system consisting of `subsystems`. Couplings between subsystems can
 be additionally defined. Subsystem drives are always appended to any new coupling drives.
-
 """
 struct CompositeQuantumSystem <: AbstractQuantumSystem
     H::Function

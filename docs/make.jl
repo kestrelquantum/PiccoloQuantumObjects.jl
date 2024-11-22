@@ -4,8 +4,6 @@ using Literate
 
 push!(LOAD_PATH, joinpath(@__DIR__, "..", "src"))
 
-# DocMeta.setdocmeta!(QuantumCollocation, :DocTestSetup, :(using QuantumCollocation); recursive=true)
-
 pages = [
     "Home" => "index.md",
     "Library" => "lib.md",

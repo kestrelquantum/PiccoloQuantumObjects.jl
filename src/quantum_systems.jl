@@ -71,8 +71,11 @@ Construct a `QuantumSystem` with Lindblad operators:
 
 ```jldoctest
 julia> H_drift = GATES[:Z]
+
 julia> H_drives = [GATES[:X], GATES[:Y]]
+
 julia> dissipation_operators = [GATES[:Z], annihilate(2)]
+
 julia> system = QuantumSystem(H_drift, H_drives, dissipation_operators)
 ```
 

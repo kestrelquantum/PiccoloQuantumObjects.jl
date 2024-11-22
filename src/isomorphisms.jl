@@ -37,52 +37,49 @@ end
 # ----------------------------------------------------------------------------- #
 
 @doc raw"""
-    ket_to_iso(ψ)
+    ket_to_iso(ψ::AbstractVector{<:Number})
 
 Convert a ket vector `ψ` into a complex vector with real and imaginary parts.
 """
-ket_to_iso(ψ) = [real(ψ); imag(ψ)]
+ket_to_iso(ψ::AbstractVector{<:Number}) = [real(ψ); imag(ψ)]
 
 @doc raw"""
-    iso_to_ket(ψ̃)
+    iso_to_ket(ψ̃::AbstractVector{<:Real})
 
-Convert a complex vector `ψ̃` with real and imaginary parts into a ket vector.
+Convert a real isomorphism vector `ψ̃` into a ket vector.
 """
-iso_to_ket(ψ̃) = ψ̃[1:div(length(ψ̃), 2)] + im * ψ̃[(div(length(ψ̃), 2) + 1):end]
+iso_to_ket(ψ̃::AbstractVector{<:Real}) = 
+    ψ̃[1:div(length(ψ̃), 2)] + im * ψ̃[(div(length(ψ̃), 2) + 1):end]
 
 # ----------------------------------------------------------------------------- #
 #                             Unitaries                                         #
 # ----------------------------------------------------------------------------- #
 
 @doc raw"""
-    iso_vec_to_operator(Ũ⃗::AbstractVector)
+    iso_vec_to_operator(Ũ⃗::AbstractVector{ℝ}) where ℝ <: Real
 
 Convert a real vector `Ũ⃗` into a complex matrix representing an operator.
-
-Must be differentiable.
 """
-function iso_vec_to_operator(Ũ⃗::AbstractVector{R}) where R <: Real
+function iso_vec_to_operator(Ũ⃗::AbstractVector{ℝ}) where ℝ <: Real
     Ũ⃗_dim = div(length(Ũ⃗), 2)
     N = Int(sqrt(Ũ⃗_dim))
-    U = Matrix{complex(R)}(undef, N, N)
+    U = Matrix{complex(ℝ)}(undef, N, N)
     for i=0:N-1
-        U[:, i+1] .= @view(Ũ⃗[i * 2N .+ (1:N)]) + one(R) * im * @view(Ũ⃗[i * 2N .+ (N+1:2N)])
+        U[:, i+1] .= @view(Ũ⃗[i * 2N .+ (1:N)]) + one(ℝ) * im * @view(Ũ⃗[i * 2N .+ (N+1:2N)])
     end
     return U
 end
 
 @doc raw"""
-    iso_vec_to_iso_operator(Ũ⃗::AbstractVector)
+    iso_vec_to_iso_operator(Ũ⃗::AbstractVector{ℝ}) where ℝ <: Real
 
 Convert a real vector `Ũ⃗` into a real matrix representing an isomorphism operator.
-
-Must be differentiable.
 """
-function iso_vec_to_iso_operator(Ũ⃗::AbstractVector{R}) where R <: Real
+function iso_vec_to_iso_operator(Ũ⃗::AbstractVector{ℝ}) where ℝ <: Real
     N = Int(sqrt(length(Ũ⃗) ÷ 2))
-    Ũ = Matrix{R}(undef, 2N, 2N)
-    U_real = Matrix{R}(undef, N, N)
-    U_imag = Matrix{R}(undef, N, N)
+    Ũ = Matrix{ℝ}(undef, 2N, 2N)
+    U_real = Matrix{ℝ}(undef, N, N)
+    U_imag = Matrix{ℝ}(undef, N, N)
     for i=0:N-1
         U_real[:, i+1] .= @view(Ũ⃗[i*2N .+ (1:N)])
         U_imag[:, i+1] .= @view(Ũ⃗[i*2N .+ (N+1:2N)])
@@ -95,13 +92,11 @@ function iso_vec_to_iso_operator(Ũ⃗::AbstractVector{R}) where R <: Real
 end
 
 @doc raw"""
-    operator_to_iso_vec(U::AbstractMatrix{<:Complex})
+    operator_to_iso_vec(U::AbstractMatrix{ℂ}) where ℂ <: Number
 
 Convert a complex matrix `U` representing an operator into a real vector.
 
-Must be differentiable.
-
-# Example 
+# Examples 
 
 ```jldoctest
 julia> U = [1 5; 2 6] + im * [3 7; 4 8]
@@ -119,12 +114,11 @@ julia> operator_to_iso_vec(U)
     6
     7
     8
-
 ```
-"""
-function operator_to_iso_vec(U::AbstractMatrix{R}) where R <: Number
+""" 
+function operator_to_iso_vec(U::AbstractMatrix{ℂ}) where ℂ <: Number
     N = size(U,1)
-    Ũ⃗ = Vector{real(R)}(undef, N^2 * 2)
+    Ũ⃗ = Vector{real(ℂ)}(undef, N^2 * 2)
     for i=0:N-1
         Ũ⃗[i*2N .+ (1:N)] .= real(@view(U[:, i+1]))
         Ũ⃗[i*2N .+ (N+1:2N)] .= imag(@view(U[:, i+1]))
@@ -133,15 +127,13 @@ function operator_to_iso_vec(U::AbstractMatrix{R}) where R <: Number
 end
 
 @doc raw"""
-    iso_operator_to_iso_vec(Ũ::AbstractMatrix)
+    iso_operator_to_iso_vec(Ũ::AbstractMatrix{ℝ}) where ℝ <: Real
 
 Convert a real matrix `Ũ` representing an isomorphism operator into a real vector.
-
-Must be differentiable.
 """
-function iso_operator_to_iso_vec(Ũ::AbstractMatrix{R}) where R <: Real
+function iso_operator_to_iso_vec(Ũ::AbstractMatrix{ℝ}) where ℝ <: Real
     N = size(Ũ, 1) ÷ 2
-    Ũ⃗ = Vector{R}(undef, N^2 * 2)
+    Ũ⃗ = Vector{ℝ}(undef, N^2 * 2)
     for i=0:N-1
         Ũ⃗[i*2N .+ (1:2N)] .= @view Ũ[:, i+1]
     end
@@ -157,18 +149,18 @@ operator_to_iso_operator(U) = iso_vec_to_iso_operator(operator_to_iso_vec(U))
 # ----------------------------------------------------------------------------- #
 
 @doc raw"""
-    dm_to_iso(ρ::AbstractMatrix)
+    dm_to_iso(ρ::AbstractMatrix{<:Number})
 
 Returns the isomorphism `ρ⃗̃ = ket_to_iso(vec(ρ))` of a density matrix `ρ`
 """
 dm_to_iso(ρ::AbstractMatrix{<:Number}) = ket_to_iso(vec(ρ))
 
 @doc raw"""
-    iso_to_dm(ρ⃗̃::AbstractVector)
+    iso_to_dm(ρ⃗̃::AbstractVector{<:Real})
 
 Returns the density matrix `ρ` from its isomorphism `ρ⃗̃`
 """
-iso_to_dm(ρ⃗̃::AbstractVector) = mat(iso_to_ket(ρ⃗̃))
+iso_to_dm(ρ⃗̃::AbstractVector{<:Real}) = mat(iso_to_ket(ρ⃗̃))
 
 # ----------------------------------------------------------------------------- #
 #                             Hamiltonians                                      #
@@ -180,7 +172,7 @@ const Im2 = [
 ]
 
 @doc raw"""
-   iso(H::AbstractMatrix{<:Number})
+    iso(H::AbstractMatrix{<:Number})
 
 Returns the isomorphism of ``H``:
 
@@ -205,7 +197,7 @@ iso(H::AbstractMatrix{<:Number}) = kron(I(2), real(H)) + kron(Im2, imag(H))
 Returns the isomorphism of ``-iH``:
 
 ```math
-G(H) = \widetilde{- i H} = \mqty(1 & 0 \\ 0 & 1) \otimes \Im(H) - \mqty(0 & -1 \\ 1 & 0) \otimes \Re(H)
+G(H) = - i \widetilde{H} = \mqty(1 & 0 \\ 0 & 1) \otimes \Im(H) - \mqty(0 & -1 \\ 1 & 0) \otimes \Re(H)
 ```
 
 where ``\Im(H)`` and ``\Re(H)`` are the imaginary and real parts of ``H`` and the tilde 
@@ -215,18 +207,17 @@ indicates the standard isomorphism of a complex valued matrix:
 \widetilde{H} = \mqty(1 & 0 \\ 0 & 1) \otimes \Re(H) + \mqty(0 & -1 \\ 1 & 0) \otimes \Im(H)
 ```
 
-Note that ``G(H) = iso(-iH)``.
+Note that ``G(H) = \text{iso}(-iH)``.
 """
 G(H::AbstractMatrix{<:Number}) = iso(-im * H)
 
 
 @doc raw"""
-    H(G::AbstractMatrix{<:Number})::Matrix{ComplexF64}
+    H(G::AbstractMatrix{<:Real})
 
-Returns the inverse of ``G(H) = iso(-iH)``, i.e. returns H
-
+Returns the inverse of ``G(H) = iso(-iH)``, i.e. returns H.
 """
-function H(G::AbstractMatrix{<:Number})
+function H(G::AbstractMatrix{<:Real})
     dim = size(G, 1) ÷ 2
     H_imag = G[1:dim, 1:dim]
     H_real = -G[dim+1:end, 1:dim]
@@ -235,7 +226,7 @@ end
 
 
 @doc raw"""
-    ad_vec(H::AbstractMatrix{R}; anti::Bool=false) where R <: Number
+    ad_vec(H::AbstractMatrix{ℂ}; anti::Bool=false) where ℂ <: Number
 
 Returns the vectorized adjoint action of a matrix `H`:
 
@@ -243,8 +234,8 @@ Returns the vectorized adjoint action of a matrix `H`:
 \text{ad_vec}(H) = \mqty(1 & 0 \\ 0 & 1) \otimes H - (-1)^{\text{anti}} \mqty(0 & 1 \\ 1 & 0) \otimes H^*
 ```
 """
-function ad_vec(H::AbstractMatrix{R}; anti::Bool=false) where R <: Number
-    Id = sparse(R, I, size(H)...)
+function ad_vec(H::AbstractMatrix{ℂ}; anti::Bool=false) where ℂ <: Number
+    Id = sparse(ℂ, I, size(H)...)
     return kron(Id, H) - (-1)^anti * kron(conj(H)', Id)
 end
 

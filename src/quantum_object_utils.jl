@@ -21,7 +21,7 @@ operator_from_string(operator::String; lookup::Dict{Symbol, AbstractMatrix}=PAUL
 
     Reduce the string (each character is one key) via operators from a dictionary.
 
-# Example
+# Examples
 
 ```julia
 julia> operator_from_string("X")
@@ -67,7 +67,7 @@ end
 
 Construct a quantum state from a string ket representation.
 
-# Example
+# Examples
 ```julia
 
 julia> ket_from_string("g", [2])
@@ -143,7 +143,7 @@ end
 
 Get the state vector for a qubit system given a ket string `ket` of 0s and 1s.
 
-# Example
+# Examples
 ```julia
 
 julia> ket_from_bitstring("0")
@@ -175,7 +175,7 @@ end
 
 Generate a random unitary matrix using the Haar measure for an `n`-dimensional system.
 
-# Example
+# Examples
 ```julia
 
 julia> haar_random(2)
@@ -200,7 +200,7 @@ Generate a random unitary matrix close to the identity matrix using the Haar mea
 an `n`-dimensional system with a given `radius`. The smaller the radius, the closer the
 matrix will be to the identity.
 
-# Example
+# Examples
 ```julia
 
 julia> haar_identity(2, 0.1)
@@ -227,7 +227,7 @@ end
 
 Get the annihilation operator for a system with `levels` levels.
 
-# Example
+# Examples
 ```julia
 
 julia> annihilate(2)
@@ -252,7 +252,7 @@ end
 
 Get the creation operator for a system with `levels` levels.
 
-# Example
+# Examples
 ```julia
 
 julia> create(2)

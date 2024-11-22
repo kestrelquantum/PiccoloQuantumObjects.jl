@@ -257,7 +257,7 @@ Check if the gate is reachable from the given system.
 - `use_drift::Bool=true`: include drift Hamiltonian in the generators
 - `kwargs...`: keyword arguments for `is_reachable`
 
-# Example
+# Examples
 
 ```jldoctest
 julia> sys = QuantumSystem(PAULIS[:Z], [PAULIS[:X]])
