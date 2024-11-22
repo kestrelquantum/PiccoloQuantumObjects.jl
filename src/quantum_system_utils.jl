@@ -276,15 +276,12 @@ function is_reachable(
     use_drift::Bool=true,
     kwargs...
 )
-    H_drift = sparse(system.H(zeros(system.n_drives)))
-    hamiltonians = [
-        sparse(system.H(I[1:system.n_drives, i])) - H_drift
-            for i = 1:system.n_drives
-    ]
-    if use_drift && !isapprox(H_drift, zeros(eltype(H_drift), size(H_drift)))
-        push!(hamiltonians, H_drift)
+    H_drift = get_H_drift(system)
+    H_drives = get_H_drives(system)
+    if use_drift && !all(H_drift .≈ 0)
+        push!(H_drives, H_drift)
     end
-    return is_reachable(gate, hamiltonians; kwargs...)
+    return is_reachable(gate, H_drives; kwargs...)
 end
 
 is_reachable(gate::EmbeddedOperator, args...; kwargs...) =
@@ -293,6 +290,8 @@ is_reachable(gate::EmbeddedOperator, args...; kwargs...) =
 # ****************************************************************************** #
 
 @testitem "Lie algebra basis" begin
+    using PiccoloQuantumObjects: QuantumSystemUtils.operator_algebra
+
     # Check 1 qubit with complete basis
     gen = operator_from_string.(["X", "Y"])
     basis = operator_algebra(gen, return_layers=false, verbose=false)

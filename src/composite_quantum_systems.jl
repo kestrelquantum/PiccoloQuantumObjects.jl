@@ -1,262 +1,269 @@
 module CompositeQuantumSystems
 
+export lift
 export CompositeQuantumSystem
 
 using ..QuantumSystems
+using ..Isomorphisms
 
+using LinearAlgebra
 using SparseArrays
+using TestItemRunner
 
 # ----------------------------------------------------------------------------- #
-# Quantum System couplings
+# Lift operators
 # ----------------------------------------------------------------------------- #
 
 @doc raw"""
-    lift(U::AbstractMatrix{<:Number}, qubit_index::Int, n_qubits::Int; levels::Int=size(U, 1))
+    lift(operator::AbstractMatrix{<:Number}, i::Int, subsystem_levels::Vector{Int})
+    lift(operator::AbstractMatrix{<:Number}, i::Int, n_qubits::Int; kwargs...)
+    lift(operators::AbstractVector{<:AbstractMatrix{T}}, indices::AbstractVector{Int}, subsystem_levels::Vector{Int})
+    lift(operators::AbstractVector{<:AbstractMatrix{T}}, indices::AbstractVector{Int}, n_qubits::Int; kwargs...)
 
-Lift an operator `U` acting on a single qubit to an operator acting on the entire system of `n_qubits`.
+Lift an `operator` acting on the `i`-th subsystem within `subsystem_levels` to an operator
+acting on the entire system spanning `subsystem_levels`.
+
+# Examples
+
+Create the a + a' operator acting on the 1st subsystem
+```jldoctest
+julia> subspace_levels = [3, 4]
+julia> lift(create(3) + annihilate(3), 1, subspace_levels)
+
+Create the IYII operator by specifying the number of qubits
+```jldoctest
+julia> lift(PAULIS[:Y], 2, 4)
+```
+
+Create the XX operator acting on qubits 3 and 4 in a 5-qubit system
+```jldoctest
+# Specify the subsystem levels
+julia> lift([PAULIS[:X], PAULIS[:X]], [3, 4], [2, 2, 2, 2, 2])
+
+# Or specify the number of qubits
+julia> lift([PAULIS[:X], PAULIS[:X]], [3, 4], 5)
+```
+
 """
+function lift end
+
+function lift(operator::AbstractMatrix{T}, i::Int, subsystem_levels::Vector{Int}
+) where T <: Number
+    @assert size(operator, 1) == subsystem_levels[i] "Operator must match subsystem level."
+    Is = [Matrix{T}(I(l)) for l ∈ subsystem_levels]
+    Is[i] = operator
+    return reduce(kron, Is)
+end
+
 function lift(
-    U::AbstractMatrix{<:Number},
-    qubit_index::Int,
+    operator::AbstractMatrix{T}, i::Int, n_qubits::Int; 
+    levels::Int=size(operator, 1)
+) where T <: Number
+    return lift(operator, i, fill(levels, n_qubits))
+end
+
+function lift(
+    operators::AbstractVector{<:AbstractMatrix{T}},
+    indices::AbstractVector{Int},
+    subsystem_levels::Vector{Int}
+) where T <: Number
+    @assert length(operators) == length(indices)
+    return prod([lift(op, i, subsystem_levels) for (op, i) ∈ zip(operators, indices)])
+end
+
+function lift(
+    operators::AbstractVector{<:AbstractMatrix{T}},
+    indices::AbstractVector{Int},
     n_qubits::Int;
-    levels::Int=size(U, 1)
-)::Matrix{ComplexF64}
-    Is = Matrix{Complex}[I(levels) for _ = 1:n_qubits]
-    Is[qubit_index] = U
-    return foldr(⊗, Is)
-end
-
-@doc raw"""
-    lift(op::AbstractMatrix{<:Number}, i::Int, subsystem_levels::Vector{Int})
-
-Lift an operator `op` acting on the i-th subsystem to an operator acting on the entire system with given subsystem levels.
-"""
-function lift(
-    op::AbstractMatrix{<:Number},
-    i::Int,
-    subsystem_levels::Vector{Int}
-)::Matrix{ComplexF64}
-    @assert size(op, 1) == size(op, 2) == subsystem_levels[i] "Operator must be square and match dimension of subsystem i"
-
-    Is = [collect(1.0 * typeof(op)(I, l, l)) for l ∈ subsystem_levels]
-    Is[i] = op
-    return kron(1.0, Is...)
-end
-
-"""
-    QuantumSystemCoupling <: AbstractQuantumSystem
-
-"""
-struct QuantumSystemCoupling
-    term::SparseMatrixCSC{ComplexF64, Int}
-    g_ij::Float64
-    pair::Tuple{Int, Int}
-    subsystem_levels::Vector{Int}
-    constructor::Union{Function, Nothing}
-    params::Dict{Symbol, <:Any}
-
-    function QuantumSystemCoupling(op::AbstractMatrix{<:ComplexF64}, args...)
-        return new(
-            sparse(op),
-            args...
-        )
-    end
-end
-
-function (coupling::QuantumSystemCoupling)(;
-    g_ij::Float64=coupling.g_ij,
-    pair::Tuple{Int, Int}=coupling.pair,
-    subsystem_levels::Vector{Int}=coupling.subsystem_levels,
-    params...
-)
-    @assert !isnothing(coupling.constructor) "No constructor provided."
-    @assert all([
-        key ∈ keys(coupling.params) for key ∈ keys(params)
-    ]) "Invalid parameter(s) provided: $(filter(param -> param ∉ keys(coupling.params), keys(params)))"
-    return coupling.constructor(
-        g_ij,
-        pair,
-        subsystem_levels;
-        merge(coupling.params, Dict(params...))...
+    levels::Int=size(operators[1], 1)
+) where T <: Number
+    return prod(
+        [lift(op, i, n_qubits, levels=levels) for (op, i) ∈ zip(operators, indices)]
     )
 end
 
-function Base.copy(coupling::QuantumSystemCoupling)
-    return QuantumSystemCoupling(
-        copy(coupling.op),
-        coupling.g_ij,
-        coupling.pair,
-        coupling.subsystem_levels,
-        coupling.constructor,
-        copy(coupling.params)
-    )
-end
+# ----------------------------------------------------------------------------- #
+# Composite Quantum Systems
+# ----------------------------------------------------------------------------- #
 
+"""
+    CompositeQuantumSystem <: AbstractQuantumSystem
 
+A composite quantum system consisting of `subsystems`. Couplings between subsystems can
+be additionally defined. Subsystem drives are always appended to any new coupling drives.
+
+"""
 struct CompositeQuantumSystem <: AbstractQuantumSystem
-    H_drift::SparseMatrixCSC{ComplexF64, Int}
-    H_drives::Vector{SparseMatrixCSC{ComplexF64, Int}}
-    G_drift::SparseMatrixCSC{Float64, Int}
-    G_drives::Vector{SparseMatrixCSC{Float64, Int}}
+    H::Function
+    G::Function
+    ∂G::Function
+    n_drives::Int
     levels::Int
-    subsystem_levels::Vector{Int}
     params::Dict{Symbol, Any}
+    subsystem_levels::Vector{Int}
     subsystems::Vector{QuantumSystem}
-    couplings::Vector{QuantumSystemCoupling}
 end
 
 function CompositeQuantumSystem(
-    subsystems::Vector{QuantumSystem},
-    couplings::Vector{QuantumSystemCoupling}=QuantumSystemCoupling[];
-    subsystem_frame_index::Int=1,
-    frame_ω::Float64=subsystems[subsystem_frame_index].params[:ω],
-    lab_frame::Bool=false
+    H_drift::AbstractMatrix{<:Number},
+    H_drives::AbstractVector{<:AbstractMatrix{<:Number}},
+    subsystems::AbstractVector{QuantumSystem};
+    params::Dict{Symbol, Any}=Dict{Symbol, Any}()
 )
-    # set all subsystems to the same frame_ω
-    subsystems = [sys(; frame_ω=frame_ω) for sys ∈ subsystems]
-
-    if lab_frame
-        subsystems = [sys(; lab_frame=true) for sys ∈ subsystems]
-        couplings = [coupling(; lab_frame=true) for coupling ∈ couplings]
-    end
-
     subsystem_levels = [sys.levels for sys ∈ subsystems]
     levels = prod(subsystem_levels)
 
-    # add lifted subsystem drift Hamiltonians
-    H_drift = sparse(zeros(levels, levels))
+    H_drift = sparse(H_drift)
     for (i, sys) ∈ enumerate(subsystems)
-        H_drift += lift(sys.H_drift, i, subsystem_levels)
+        H_drift += lift(get_H_drift(sys), i, subsystem_levels)
     end
 
-    # add lifated couplings to the drift Hamiltonian
-    for coupling ∈ couplings
-        H_drift += coupling.term
-    end
-
-    # add lifted subsystem drive Hamiltonians
-    H_drives = SparseMatrixCSC{ComplexF64, Int}[]
+    H_drives = sparse.(H_drives)
     for (i, sys) ∈ enumerate(subsystems)
-        for H_drive ∈ sys.H_drives
+        for H_drive ∈ get_H_drives(sys)
             push!(H_drives, lift(H_drive, i, subsystem_levels))
         end
     end
 
-    G_drift = Isomorphisms.G(H_drift)
-    G_drives = Isomorphisms.G.(H_drives)
-    levels = size(H_drift, 1)
-    subsystem_levels = [sys.levels for sys ∈ subsystems]
-    params = Dict{Symbol, Any}()
+    n_drives = length(H_drives)
+    H_drives = sparse.(H_drives)
+    G_drives = sparse.(Isomorphisms.G.(H_drives))
+
+    if n_drives == 0
+        H = a -> H_drift
+        G = a -> Isomorphisms.G(H_drift)
+        ∂G = a -> 0
+    else
+        H = a -> H_drift + sum(a .* H_drives)
+        G = a -> G_drift + sum(a .* G_drives)
+        ∂G = a -> G_drives
+    end
 
     return CompositeQuantumSystem(
-        H_drift,
-        H_drives,
-        G_drift,
-        G_drives,
+        H,
+        G,
+        ∂G,
+        n_drives,
         levels,
-        subsystem_levels,
         params,
-        subsystems,
-        couplings
+        subsystem_levels,
+        subsystems
     )
 end
 
-function (csys::CompositeQuantumSystem)(;
-    subsystem_params::Dict{Int, <:Dict{Symbol, <:Any}}=Dict{Int, Dict{Symbol, Any}}(),
-    coupling_params::Dict{Int, <:Dict{Symbol, <:Any}}=Dict{Int, Dict{Symbol, Any}}(),
-    lab_frame::Bool=false,
-    subsystem_frame_index::Int=1,
-    frame_ω::Float64=csys.subsystems[subsystem_frame_index].params[:ω],
-    subsystem_levels::Union{Nothing, Int, Vector{Int}}=nothing,
-)
-    subsystems = deepcopy(csys.subsystems)
-    couplings = deepcopy(csys.couplings)
-
-    # if lab frame then set all subsystems and couplings to lab frame
-    if lab_frame
-
-        # set lab frame in subsystem_params for all subsystems
-        for i = 1:length(csys.subsystems)
-            if i ∈ keys(subsystem_params)
-                subsystem_params[i][:lab_frame] = true
-            else
-                subsystem_params[i] = Dict{Symbol, Any}(:lab_frame => true)
-            end
-        end
-
-        # set lab frame in coupling_params for all couplings
-        for i = 1:length(csys.couplings)
-            if i ∈ keys(coupling_params)
-                coupling_params[i][:lab_frame] = true
-            else
-                coupling_params[i] = Dict{Symbol, Any}(:lab_frame => true)
-            end
-        end
-    end
-
-    # if subsystem_levels is provided then set all subsystems and couplings to subsystem_levels
-    if !isnothing(subsystem_levels)
-
-        if subsystem_levels isa Int
-            subsystem_levels = fill(subsystem_levels, length(csys.subsystems))
-        else
-            @assert(
-                length(subsystem_levels) == length(csys.subsystems),
-                """\n
-                    number of subsystem_levels ($(length(subsystem_levels))) must match number of subsystems ($(length(csys.subsystems))).
-                """
-            )
-        end
-
-        for i = 1:length(csys.subsystems)
-            if i ∈ keys(subsystem_params)
-                subsystem_params[i][:levels] = subsystem_levels[i]
-            else
-                subsystem_params[i] = Dict{Symbol, Any}(
-                    :levels => subsystem_levels[i]
-                )
-            end
-        end
-
-        for i = 1:length(csys.couplings)
-            if i ∈ keys(coupling_params)
-                coupling_params[i][:subsystem_levels] = subsystem_levels
-            else
-                coupling_params[i] = Dict{Symbol, Any}(
-                    :subsystem_levels => subsystem_levels
-                )
-            end
-        end
-    end
-
-    # construct subsystems with new parameters
-    for (i, sys_params) ∈ subsystem_params
-        subsystem_i_new_params = merge(subsystems[i].params, sys_params)
-        subsystem_i_new_params[:frame_ω] = frame_ω
-        subsystems[i] = subsystems[i](; subsystem_i_new_params...)
-    end
-
-    # sometimes redundant, but here to catch any changes in indvidual subsystem levels
-    subsystem_levels = [sys.levels for sys ∈ subsystems]
-
-    # construct couplings with new parameters
-    if !isempty(csys.couplings)
-        for (i, coupling_params) ∈ coupling_params
-            couplings[i] = couplings[i](;
-                merge(couplings[i].params, coupling_params)...,
-                subsystem_levels=subsystem_levels
-            )
-        end
-    end
-
+function CompositeQuantumSystem(
+    H_drives::AbstractVector{<:AbstractMatrix{T}},
+    subsystems::AbstractVector{QuantumSystem};
+    kwargs...
+) where T <: Number
+    @assert !isempty(H_drives) "At least one drive is required"
     return CompositeQuantumSystem(
-        subsystems,
-        couplings
+        spzeros(T, size(H_drives[1])),
+        H_drives,
+        subsystems;
+        kwargs...
+    )
+end
+
+function CompositeQuantumSystem(
+    H_drift::AbstractMatrix{T},
+    subsystems::AbstractVector{QuantumSystem};
+    kwargs...
+) where T <: Number
+    return CompositeQuantumSystem(H_drift, Matrix{T}[], subsystems; kwargs...)
+end
+
+function CompositeQuantumSystem(
+    subsystems::AbstractVector{QuantumSystem};
+    kwargs...
+)
+    @assert !isempty(subsystems) "At least one subsystem is required"
+    T = eltype(get_H_drift(subsystems[1]))
+    levels = prod([sys.levels for sys ∈ subsystems])
+    return CompositeQuantumSystem(
+        spzeros(T, (levels, levels)), Matrix{T}[], subsystems; kwargs...
     )
 end
 
 # ****************************************************************************** #
 
-# TODO: Implement `CompositeQuantumSystem` tests
+@testitem "Lift subsystems" begin
+    using LinearAlgebra
+    @test lift(PAULIS[:X], 1, [2, 3]) ≈ kron(PAULIS[:X], I(3))
+    @test lift(PAULIS[:Y], 2, [4, 2]) ≈ kron(I(4), PAULIS[:Y])
+    @test lift(PAULIS[:X], 2, [3, 2, 4]) ≈ reduce(kron, [I(3), PAULIS[:X], I(4)])
+end
+
+@testitem "Lift qubits" begin
+    using LinearAlgebra
+    @test lift(PAULIS[:X], 1, 2) ≈ kron(PAULIS[:X], I(2))
+    @test lift(PAULIS[:Y], 2, 2) ≈ kron(I(2), PAULIS[:Y])
+    @test lift(PAULIS[:X], 2, 3) ≈ reduce(kron, [I(2), PAULIS[:X], I(2)])
+end
+
+@testitem "Lift multiple operators" begin
+    using LinearAlgebra
+    pair = [PAULIS[:X], PAULIS[:Y]]
+    @test lift(pair, [1, 2], [2, 2]) ≈ kron(PAULIS[:X], PAULIS[:Y])
+    @test lift(pair, [2, 1], [2, 2]) ≈ kron(PAULIS[:Y], PAULIS[:X])
+    @test lift(pair, [1, 2], [2, 2, 3]) ≈ kron(PAULIS[:X], PAULIS[:Y], I(3))
+    @test lift(pair, [2, 3], [4, 2, 2]) ≈ kron(I(4), PAULIS[:X], PAULIS[:Y])
+
+    # Pass number of qubits
+    @test lift(pair, [1, 2], 3) ≈ kron(PAULIS[:X], PAULIS[:Y], I(2))
+end
+
+
+@testitem "Composite system" begin
+    subsystem_levels = [4, 2, 2]
+    sys1 = QuantumSystem(kron(PAULIS[:Z], PAULIS[:Z]), [kron(PAULIS[:X], PAULIS[:Y])])
+    sys2 = QuantumSystem([PAULIS[:Y], PAULIS[:Z]])
+    sys3 = QuantumSystem(zeros(2, 2))
+    subsystems = [sys1, sys2, sys3]
+    g12 = 0.1 * lift([kron(PAULIS[:X], PAULIS[:X]), PAULIS[:X]], [1, 2], subsystem_levels)
+    g23 = 0.2 * lift([PAULIS[:Y], PAULIS[:Y]], [2, 3], subsystem_levels)
+
+    # Construct composite system
+    csys = CompositeQuantumSystem(g12, [g23], [sys1, sys2, sys3])
+    @test csys.levels == prod(subsystem_levels)
+    @test csys.n_drives == 1 + sum([sys.n_drives for sys ∈ subsystems])
+    @test csys.subsystems == subsystems
+    @test csys.subsystem_levels == subsystem_levels
+    @test get_H_drift(csys) ≈ g12 + lift(kron(PAULIS[:Z], PAULIS[:Z]), 1, subsystem_levels)end
+
+@testitem "Composite system from drift" begin
+    using LinearAlgebra
+
+    subsystem_levels = [2, 2]
+    sys1 = QuantumSystem([PAULIS[:X], PAULIS[:Y]])
+    sys2 = QuantumSystem([PAULIS[:Y], PAULIS[:Z]])
+    subsystems = [sys1, sys2]
+    g12 = 0.1 * kron(PAULIS[:X], PAULIS[:X])
+
+    # Construct composite system from drift
+    csys = CompositeQuantumSystem(g12, [sys1, sys2])
+    @test csys.levels == prod(subsystem_levels)
+    @test csys.n_drives == sum([sys.n_drives for sys ∈ subsystems])
+    @test csys.subsystems == subsystems
+    @test csys.subsystem_levels == subsystem_levels
+    @test get_H_drift(csys) ≈ g12
+end
+
+@testitem "Composite system from drives" begin
+    subsystem_levels = [2, 2, 2]
+    sys1 = QuantumSystem(PAULIS[:Z], [PAULIS[:X], PAULIS[:Y]])
+    sys2 = QuantumSystem([PAULIS[:Y], PAULIS[:Z]])
+    sys3 = QuantumSystem(zeros(2, 2))
+    subsystems = [sys1, sys2, sys3]
+    g12 = 0.1 * lift([PAULIS[:X], PAULIS[:X]], [1, 2], subsystem_levels)
+    g23 = 0.2 * lift([PAULIS[:Y], PAULIS[:Y]], [2, 3], subsystem_levels)
+
+    csys = CompositeQuantumSystem([g12, g23], [sys1, sys2, sys3])
+    @test csys.levels == prod(subsystem_levels)
+    @test csys.n_drives == 2 + sum([sys.n_drives for sys ∈ subsystems])
+    @test csys.subsystems == subsystems
+    @test csys.subsystem_levels == subsystem_levels
+    @test get_H_drift(csys) ≈ lift(PAULIS[:Z], 1, subsystem_levels)
+end
 
 end

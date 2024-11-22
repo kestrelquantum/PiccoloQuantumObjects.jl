@@ -27,14 +27,26 @@ Abstract type for defining systems.
 abstract type AbstractQuantumSystem end
 
 # ----------------------------------------------------------------------------- #
+# AbstractQuantumSystem methods
+# ----------------------------------------------------------------------------- #
+
+get_H_drift(sys::AbstractQuantumSystem) = sys.H(zeros(sys.n_drives))
+
+function get_H_drives(sys::AbstractQuantumSystem)
+    H_drift = get_H_drift(sys)
+    # Basis vectors for controls will extract drive operators
+    return [sys.H(I[1:sys.n_drives, i]) - H_drift for i ∈ 1:sys.n_drives]
+end
+
+
+# ----------------------------------------------------------------------------- #
 # QuantumSystem
 # ----------------------------------------------------------------------------- #
 
 """
     QuantumSystem <: AbstractQuantumSystem
 
-A struct for storing the isomorphisms of the system's drift and drive Hamiltonians,
-as well as the system's parameters.
+A struct for storing the quantum dynamics and the gradients of the controls.
 
 # Fields
 - `H::Function`: The Hamiltonian function, excluding dissipation: a -> H(a).
@@ -75,8 +87,8 @@ struct QuantumSystem <: AbstractQuantumSystem
     H::Function
     G::Function
     ∂G::Function
-    levels::Int
     n_drives::Int
+    levels::Int
     params::Dict{Symbol, Any}
 end
 
@@ -93,7 +105,7 @@ Constructs a `QuantumSystem` object from the drift and drive Hamiltonian terms.
 function QuantumSystem(
     H_drift::AbstractMatrix{<:Number},
     H_drives::Vector{<:AbstractMatrix{<:Number}}; 
-    params=Dict{Symbol, Any}(),
+    params::Dict{Symbol, Any}=Dict{Symbol, Any}(),
 )
     levels = size(H_drift, 1)
     H_drift = sparse(H_drift)
@@ -108,9 +120,6 @@ function QuantumSystem(
         G = a -> G_drift
         ∂G = a -> 0
     else
-        H_drives = sparse.(H_drives)
-        G_drives = sparse.(Isomorphisms.G.(H_drives))
-
         H = a -> H_drift + sum(a .* H_drives)
         G = a -> G_drift + sum(a .* G_drives)
         ∂G = a -> G_drives
@@ -120,27 +129,19 @@ function QuantumSystem(
         H,
         G,
         ∂G,
-        levels,
         n_drives,
+        levels,
         params
     )
 end
 
-function QuantumSystem(H_drives::Vector{<:AbstractMatrix{<:Number}}; kwargs...)
-    return QuantumSystem(
-        spzeros(eltype(H_drives[1]), size(H_drives[1])),
-        H_drives;
-        kwargs...
-    )
+function QuantumSystem(H_drives::Vector{<:AbstractMatrix{T}}; kwargs...) where T <: Number
+    @assert !isempty(H_drives) "At least one drive is required"
+    return QuantumSystem(spzeros(T, size(H_drives[1])), H_drives; kwargs...)
 end
 
-function QuantumSystem(H_drift::AbstractMatrix{<:Number}; kwargs...)
-    return QuantumSystem(
-        H_drift,
-        Matrix{eltype(H_drift)}[];
-        kwargs...
-    )
-end
+QuantumSystem(H_drift::AbstractMatrix{T}; kwargs...) where T <: Number = 
+    QuantumSystem(H_drift, Matrix{T}[]; kwargs...)
 
 function generator_jacobian(G::Function)
     return function ∂G(a::Vector{Float64})
@@ -161,7 +162,7 @@ function QuantumSystem(
     H_drift::AbstractMatrix,
     H_drives::Vector{<:AbstractMatrix},
     dissipation_operators::Vector{<:AbstractMatrix};
-    params=Dict{Symbol, Any}()
+    params::Dict{Symbol, Any}=Dict{Symbol, Any}()
 )
     levels = size(H_drift, 1)
     H_drift = sparse(H_drift)
@@ -201,23 +202,28 @@ function QuantumSystem(
 
 end
 
-# ----------------------------------------------------------------------------- #
-# QuantumSystem methods
-# ----------------------------------------------------------------------------- #
-
-get_H_drift(sys::QuantumSystem) = sys.H(zeros(sys.n_drives))
-
-function get_H_drives(sys::QuantumSystem)
-    # Basis vectors for controls will extract drive operators
-    H_drift = get_H_drift(sys)
-    return [sys.H(I[1:sys.n_drives, i]) - H_drift for i ∈ 1:sys.n_drives]
-end
-
 # ****************************************************************************** #
 
 @testitem "System creation" begin
     H_drift = GATES[:Z]
     H_drives = [GATES[:X], GATES[:Y]]
+    n_drives = length(H_drives)
+
+    system = QuantumSystem(H_drift, H_drives)
+    @test system isa QuantumSystem
+    @test get_H_drift(system) == H_drift
+    @test get_H_drives(system) == H_drives
+
+    # test jacobians
+    a = randn(n_drives)
+    ∂G = system.∂G(a)
+    @test length(∂G) == system.n_drives
+    @test all(∂G .≈ QuantumSystems.generator_jacobian(system.G)(a))
+
+    # repeat with a bigger system
+    H_drift = kron(GATES[:Z], GATES[:Z])
+    H_drives = [kron(GATES[:X], GATES[:I]), kron(GATES[:I], GATES[:X]),
+                kron(GATES[:Y], GATES[:I]), kron(GATES[:I], GATES[:Y])]
     n_drives = length(H_drives)
 
     system = QuantumSystem(H_drift, H_drives)
