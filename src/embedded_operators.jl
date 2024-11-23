@@ -70,7 +70,7 @@ struct EmbeddedOperator
     subsystem_levels::Vector{Int}
 
     @doc raw"""
-        EmbeddedOperator(op::Matrix{<:Number}, subspace::AbstractVector{Int}, subsystem_levels::AbstractVector{Int})
+        EmbeddedOperator(subspace_operator::Matrix{<:Number}, subspace::AbstractVector{Int}, subsystem_levels::AbstractVector{Int})
 
     Create an embedded operator. The `operator` is embedded at the `subspace` of the
     system spanned by the `subsystem_levels`.
@@ -117,75 +117,76 @@ function EmbeddedOperator(
     )
 end
 
-function EmbeddedOperator(op::Symbol, args...; kwargs...)
-    if op ∉ keys(gates)
+function EmbeddedOperator(subspace_operator::Symbol, args...; kwargs...)
+    if subspace_operator ∉ keys(gates)
         throw(ArgumentError("Operator must be a valid gate. "
             *"See PiccoloQuantumObjects.gates.GATES dict for available gates."))
     end
-    return EmbeddedOperator(GATES[op], args...; kwargs...)
+    return EmbeddedOperator(GATES[subspace_operator], args...; kwargs...)
 end
 
-# TODO: TEST & DOCUMENT & FIX
-function EmbeddedOperator(
-    subspace_operator::AbstractMatrix{<:Number},
-    composite_system::CompositeQuantumSystem,
-    subsystem_indices::AbstractVector{Int};
-    subspaces=fill(1:2, length(composite_system.subsystems)),
-)
-    @assert all(diff(subsystem_indices) .== 1) "subsystem_indices must be consecutive (for now)."
+# TODO: TEST & DOCUMENT & FIX (and add a CompositeQuantumSystem method)
+# function EmbeddedOperator(
+#     subspace_operator::AbstractMatrix{<:Number},
+#     subsystem_indices::AbstractVector{Int},
+#     subspaces::AbstractVector{<:AbstractVector{Int}},
+#     subsystem_levels::AbstractVector{Int},
+# )
+#     @assert all(diff(subsystem_indices) .== 1) "subsystem_indices must be consecutive (for now)."
 
-    if size(subspace_operator, 1) == prod(length.(subspaces[subsystem_indices]))
-        Is = Matrix{ComplexF64}.(I.(length.(subspaces)))
-        Is[subsystem_indices[1]] = subspace_operator
-        deleteat!(Is, subsystem_indices[2:end])
-        subspace_operator = kron(Is...)
-    elseif size(subspace_operator, 1) != prod(length.(subspaces))
-        throw(ArgumentError(
-            "Operator size ($(size(subspace_operator, 1))) must match "
-            *"the product of subsystem subspaces ($(prod(length.(subspaces))))."
-        ))
-    end
+#     if size(subspace_operator, 1) == prod(length.(subspaces[subsystem_indices]))
+#         Is = Matrix{ComplexF64}.(I.(length.(subspaces)))
+#         Is[subsystem_indices[1]] = subspace_operator
+#         deleteat!(Is, subsystem_indices[2:end])
+#         subspace_operator = kron(Is...)
+#     elseif size(subspace_operator, 1) == prod(length.(subspaces))
+#         # Do nothing
+#     else
+#         throw(ArgumentError(
+#             "Operator size ($(size(subspace_operator, 1))) must match "
+#             *"the product of subsystem subspaces ($(prod(length.(subspaces))))."
+#         ))
+#     end
 
-    return EmbeddedOperator(
-        op,
-        get_subspace_indices(subspaces, composite_system.subsystem_levels),
-        composite_system.subsystem_levels
-    )
-end
+#     return EmbeddedOperator(
+#         subspace_operator,
+#         get_subspace_indices(subspaces, subsystem_levels),
+#         subsystem_levels
+#     )
+# end
 
-# TODO: TEST & DOCUMENT & FIX
-EmbeddedOperator(
-    subspace_operator::AbstractMatrix{<:Number},
-    composite_system::CompositeQuantumSystem,
-    subsystem_index::Int;
-    kwargs...
-) = EmbeddedOperator(subspace_operator, composite_system, [subsystem_index]; kwargs...)
+# EmbeddedOperator(
+#     subspace_operator::AbstractMatrix{<:Number},
+#     composite_system::CompositeQuantumSystem,
+#     subsystem_index::Int;
+#     kwargs...
+# ) = EmbeddedOperator(subspace_operator, composite_system, [subsystem_index]; kwargs...)
 
-function EmbeddedOperator(
-    subspace_operators::AbstractVector,
-    composite_system::CompositeQuantumSystem,
-    subsystem_indices::AbstractVector{Int};
-    kwargs...
-)
-    embedded_operators = [
-        EmbeddedOperator(op, composite_system, i; kwargs...)
-        for (op, i) ∈ zip(subspace_operators, subsystem_indices)
-    ]
-    return *(embedded_operators...)
-end
+# function EmbeddedOperator(
+#     subspace_operators::AbstractVector,
+#     composite_system::CompositeQuantumSystem,
+#     subsystem_indices::AbstractVector{Int};
+#     kwargs...
+# )
+#     embedded_operators = [
+#         EmbeddedOperator(op, composite_system, i; kwargs...)
+#         for (op, i) ∈ zip(subspace_operators, subsystem_indices)
+#     ]
+#     return *(embedded_operators...)
+# end
 
 # ----------------------------------------------------------------------------- #
 #                           EmbeddedOperator operations                         #
 # ----------------------------------------------------------------------------- #
 
 """
-    embed(subspace_op::AbstractMatrix{<:Number}, embedded_op::EmbeddedOperator)
+    embed(subspace_operator::AbstractMatrix{<:Number}, embedded_operator::EmbeddedOperator)
 
-Embed the `subspace_op` in the subspace of a larger system defined by `op`.
+Embed the `subspace_operator` in the subspace of a larger `embedded_operator`.
 """
 embed(
-    subspace_op::AbstractMatrix{<:Number}, embedded_op::EmbeddedOperator
-) = embed(subspace_op, embedded_op.subspace, prod(embedded_op.subsystem_levels))
+    subspace_operator::AbstractMatrix{<:Number}, embedded_operator::EmbeddedOperator
+) = embed(subspace_operator, embedded_operator.subspace, prod(embedded_operator.subsystem_levels))
 
 """
     unembed(embedded_op::EmbeddedOperator)::Matrix{ComplexF64}
@@ -279,6 +280,10 @@ function get_enr_subspace_indices(excitation_restriction::Int, subsystem_levels:
     )
 end
 
+# ----------------------------------------------------------------------------- #
+#                            Leakage Indices                                    #
+# ----------------------------------------------------------------------------- #
+
 """
     get_leakage_indices(subspace::AbstractVector{Int}, levels::Int)
     get_leakage_indices(subspaces::AbstractVector{<:AbstractVector{Int}}, subsystem_levels::AbstractVector{Int})
@@ -308,6 +313,10 @@ get_leakage_indices(subsystem_levels::AbstractVector{Int}; subspace=1:2) =
 
 get_leakage_indices(op::EmbeddedOperator) =
     get_leakage_indices(op.subspace, size(op, 1))
+
+# ----------------------------------------------------------------------------- #
+#                            Iso Vec Indices                                    #
+# ----------------------------------------------------------------------------- #
 
 """
     get_iso_vec_subspace_indices(subspace::AbstractVector{Int}, subsystem_levels::AbstractVector{Int})

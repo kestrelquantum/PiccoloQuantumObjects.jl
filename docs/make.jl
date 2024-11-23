@@ -6,6 +6,9 @@ push!(LOAD_PATH, joinpath(@__DIR__, "..", "src"))
 
 pages = [
     "Home" => "index.md",
+    "Isomorphisms" => "generated/isomorphisms.md",
+    "Quantum Objects" => "generated/quantum_objects.md",
+    "Quantum Systems" => "generated/quantum_systems.md",
     "Library" => "lib.md",
 ]
 

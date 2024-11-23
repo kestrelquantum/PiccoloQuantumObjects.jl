@@ -16,7 +16,6 @@ using LinearAlgebra
 using TestItemRunner
 
 
-# TODO: update bc named tuples
 @doc raw"""
     operator_from_string(operator::String; lookup=PAULIS)
 
