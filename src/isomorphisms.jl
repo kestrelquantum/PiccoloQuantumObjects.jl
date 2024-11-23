@@ -4,8 +4,8 @@ module Isomorphisms
 export mat
 export ket_to_iso
 export iso_to_ket
-export dm_to_iso
-export iso_to_dm
+export density_to_iso_vec
+export iso_vec_to_density
 export iso_vec_to_operator
 export iso_vec_to_iso_operator
 export operator_to_iso_vec
@@ -129,18 +129,18 @@ operator_to_iso_operator(U) = iso_vec_to_iso_operator(operator_to_iso_vec(U))
 # ----------------------------------------------------------------------------- #
 
 @doc raw"""
-    dm_to_iso(ρ::AbstractMatrix{<:Number})
+    density_to_iso_vec(ρ::AbstractMatrix{<:Number})
 
 Returns the isomorphism `ρ⃗̃ = ket_to_iso(vec(ρ))` of a density matrix `ρ`
 """
-dm_to_iso(ρ::AbstractMatrix{<:Number}) = ket_to_iso(vec(ρ))
+density_to_iso_vec(ρ::AbstractMatrix{<:Number}) = ket_to_iso(vec(ρ))
 
 @doc raw"""
-    iso_to_dm(ρ⃗̃::AbstractVector{<:Real})
+    iso_vec_to_density(ρ⃗̃::AbstractVector{<:Real})
 
 Returns the density matrix `ρ` from its isomorphism `ρ⃗̃`
 """
-iso_to_dm(ρ⃗̃::AbstractVector{<:Real}) = mat(iso_to_ket(ρ⃗̃))
+iso_vec_to_density(ρ⃗̃::AbstractVector{<:Real}) = mat(iso_to_ket(ρ⃗̃))
 
 # ----------------------------------------------------------------------------- #
 #                             Hamiltonians                                      #
@@ -246,12 +246,12 @@ end
     # Totally mixed state
     ρ = [1.0 0.0; 0.0 1.0]
     ρ_iso = [1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0]
-    @test dm_to_iso(ρ) ≈ ρ_iso
-    @test iso_to_dm(ρ_iso) ≈ ρ
+    @test density_to_iso_vec(ρ) ≈ ρ_iso
+    @test iso_vec_to_density(ρ_iso) ≈ ρ
 
     # Density matrix of a Bell state
     ρ = [1.0 0.0 0.0 1.0; 0.0 0.0 0.0 0.0; 0.0 0.0 0.0 0.0; 1.0 0.0 0.0 1.0] / 2
-    @test iso_to_dm(dm_to_iso(ρ)) ≈ ρ
+    @test iso_vec_to_density(density_to_iso_vec(ρ)) ≈ ρ
 
     # Random
     ρ1 = [1.0 1.0; 1.0 1.0] / 2
@@ -261,8 +261,8 @@ end
     U2 = [-0.784966-0.163279im   -0.597246-0.0215881im
            0.597536+0.0109124im  -0.792681+0.120364im]
     ρ = (U1*ρ1*U1' + U2*ρ2*U2') / 2
-    @test iso_to_dm(dm_to_iso(ρ)) ≈ ρ
-    @test iso_to_dm(dm_to_iso(ρ)) ≈ ρ
+    @test iso_vec_to_density(density_to_iso_vec(ρ)) ≈ ρ
+    @test iso_vec_to_density(density_to_iso_vec(ρ)) ≈ ρ
 end
 
 @testitem "Test Hamiltonian isomorphisms" begin

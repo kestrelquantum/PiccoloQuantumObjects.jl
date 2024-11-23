@@ -3,7 +3,6 @@
 # ```
 
 using PiccoloQuantumObjects
-using LinearAlgebra
 using SparseArrays # for visualization
 ⊗ = kron;
 

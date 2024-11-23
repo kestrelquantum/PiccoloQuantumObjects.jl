@@ -8,7 +8,6 @@ CollapsedDocStrings = true
 
 ````@example quantum_objects
 using PiccoloQuantumObjects
-using LinearAlgebra
 using SparseArrays # for visualization
 ⊗ = kron;
 nothing #hide
