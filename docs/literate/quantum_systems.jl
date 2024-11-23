@@ -1,11 +1,15 @@
 # ```@meta
 # CollapsedDocStrings = true
 # ```
+
+# # Abstract Quantum Systems
+
 using PiccoloQuantumObjects
 using SparseArrays # for visualization
 ⊗ = kron;
 
 #=
+
 ## Quantum Systems
 
 The [`QuantumSystem`](@ref) type is used to represent a quantum system with a drift 

@@ -6,19 +6,19 @@ EditURL = "../../literate/isomorphisms.jl"
 CollapsedDocStrings = true
 ```
 
+# Isomorphisms
+
 ````@example isomorphisms
 using PiccoloQuantumObjects
 using SparseArrays # for visualization
 ````
-
-# Isomorphisms for quantum objects
 
 Linear algebra operations on quantum objects are often performed on real vectors and
 matrices. We provide isomorphisms to convert between complex and real representations of
 quantum objects. These isomorphisms are used internally by the [`QuantumSystem`](@ref) type
 to perform quantum dynamics.
 
-## Quantum states
+## Quantum state isomorphisms
 
 - [`ket_to_iso`](@ref) is the real isomorphism of a quantum state `ψ ∈ ℂⁿ`
 - [`iso_to_ket`](@ref) is the inverse isomorphism of a real vector `ψ̃ ∈ ℝ²ⁿ`
@@ -32,7 +32,7 @@ to perform quantum dynamics.
 iso_to_ket(ψ̃)
 ````
 
-## Quantum operators
+## Quantum operator isomorphisms
 
 We often need to convert a complex matrix `U` to a real vector `Ũ⃗`. We provoide the
 following isomorphisms to convert between the two representations.
@@ -57,7 +57,7 @@ Ũ⃗ = operator_to_iso_vec(U)
 iso_vec_to_operator(Ũ⃗)
 ````
 
-## Density matrices
+## Density matrix isomorphisms
 
 The isomorphisms for density matrices are:
 - [`density_to_iso_vec`](@ref)`(ρ::AbstractMatrix{ℂ})`
@@ -71,7 +71,7 @@ The isomorphisms for density matrices are:
 ρ̃⃗ = density_to_iso_vec(ρ)
 ````
 
-# Quantum dynamics
+# Quantum dynamics isomorphisms
 
 The quantum dynamics isomorphisms, which correspond to these state transformations, are
 handled internally by the [`QuantumSystem`](@ref) type.

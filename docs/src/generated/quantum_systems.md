@@ -6,6 +6,8 @@ EditURL = "../../literate/quantum_systems.jl"
 CollapsedDocStrings = true
 ```
 
+# Abstract Quantum Systems
+
 ````@example quantum_systems
 using PiccoloQuantumObjects
 using SparseArrays # for visualization

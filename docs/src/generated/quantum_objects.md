@@ -6,14 +6,14 @@ EditURL = "../../literate/quantum_objects.jl"
 CollapsedDocStrings = true
 ```
 
+# Quantum Objects
+
 ````@example quantum_objects
 using PiccoloQuantumObjects
 using SparseArrays # for visualization
 ⊗ = kron;
 nothing #hide
 ````
-
-# Quantum objects
 
 Most of the time, we set up problems using quantum states and operators in the form of
 complex vectors and matrices. We provide a number of convenient ways to construct these

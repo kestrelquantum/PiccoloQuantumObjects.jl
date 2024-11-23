@@ -2,12 +2,13 @@
 # CollapsedDocStrings = true
 # ```
 
+# # Quantum Objects
+
 using PiccoloQuantumObjects
 using SparseArrays # for visualization
 ⊗ = kron;
 
 #=
-# Quantum objects
 
 Most of the time, we set up problems using quantum states and operators in the form of
 complex vectors and matrices. We provide a number of convenient ways to construct these 
