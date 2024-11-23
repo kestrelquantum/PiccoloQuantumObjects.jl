@@ -200,7 +200,6 @@ function H(G::AbstractMatrix{<:Real})
     return H_real + 1.0im * H_imag
 end
 
-
 @doc raw"""
     ad_vec(H::AbstractMatrix{ℂ}; anti::Bool=false) where ℂ <: Number
 
@@ -213,6 +212,15 @@ Returns the vectorized adjoint action of a matrix `H`:
 function ad_vec(H::AbstractMatrix{ℂ}; anti::Bool=false) where ℂ <: Number
     Id = sparse(ℂ, I, size(H)...)
     return kron(Id, H) - (-1)^anti * kron(conj(H)', Id)
+end
+
+@doc raw"""
+    iso_D(L::AbstractMatrix{ℂ}) where ℂ <: Number
+
+Returns the isomorphic representation of the Lindblad dissipator `L`.
+"""
+function iso_D(L::AbstractMatrix{ℂ}) where ℂ <: Number
+    return iso(kron(conj(L), L) - 1 / 2 * ad_vec(L'L, anti=true))
 end
 
 # *************************************************************************** #

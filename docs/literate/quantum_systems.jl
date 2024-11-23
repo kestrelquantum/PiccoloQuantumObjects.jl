@@ -3,6 +3,7 @@
 # ```
 using PiccoloQuantumObjects
 using SparseArrays # for visualization
+⊗ = kron;
 
 #=
 ## Quantum Systems
@@ -23,8 +24,8 @@ necessary isomorphisms to perform the dynamics in a real vector space.
 
 =#
 
-H_drift = GATES[:Z]
-H_drives = [GATES[:X], GATES[:Y]]
+H_drift = PAULIS[:Z]
+H_drives = [PAULIS[:X], PAULIS[:Y]]
 system = QuantumSystem(H_drift, H_drives)
 
 a_drives = [1, 0]
@@ -51,16 +52,25 @@ drives[2] |> sparse
     `ForwardDiff.jl` is used to compute the drives.
 =#
 
-H(a) = GATES[:Z] + a[1] * GATES[:X] + a[2] * GATES[:Y]
+H(a) = PAULIS[:Z] + a[1] * PAULIS[:X] + a[2] * PAULIS[:Y]
 system = QuantumSystem(H, 2)
 get_drives(system)[1] |> sparse
 
 #=
 ## Open quantum systems
 
-We can also construct an `QuantumSystem` with Lindblad dynamics by passing dissipation 
-operators.
+We can also construct an [`OpenQuantumSystem`](@ref) with Lindblad dynamics, enabling
+a user to pass a list of dissipation operators.
+
+```@docs; canonical = false
+OpenQuantumSystem
+```
 =#
+
+H_drives = [PAULIS[:X]]
+dissipation_operators = [PAULIS[:Z], PAULIS[:X]]
+system = OpenQuantumSystem(H_drives, dissipation_operators=dissipation_operators)
+system.dissipation_operators[1] |> sparse
 
 #=
 !!! warning
@@ -69,22 +79,33 @@ operators.
     [`get_drives`](@ref), and [`is_reachable`](@ref).
 =#
 
-dissipation_operators = [GATES[:Z], annihilate(2)]
-system = QuantumSystem(H_drift, H_drives, dissipation_operators)
 get_drift(system) |> sparse
 
 
 #=
 ## Composite quantum systems
 
-A [`CompositeQuantumSystem`](@ref) is constructed from a set of subsystems and their 
+A [`CompositeQuantumSystem`](@ref) is constructed from a list of subsystems and their 
 interactions. The interaction, in the form of drift or drive Hamiltonian, acts on the full
 Hilbert space. The subsystems, with their own drift and drive Hamiltonians, are internally
 lifted to the full Hilbert space.
 
 =#
 
-# TODO: Add example
+system_1 = QuantumSystem([PAULIS[:X]])
+system_2 = QuantumSystem([PAULIS[:Y]])
+H_drift = PAULIS[:Z] ⊗ PAULIS[:Z]
+system = CompositeQuantumSystem(H_drift, [system_1, system_2]);
+
+# _The drift Hamiltonian is the ZZ coupling._
+get_drift(system) |> sparse
+
+# _The drives are the X and Y operators on the first and second subsystems._
+drives = get_drives(system)
+drives[1] |> sparse
+
+#
+drives[2] |> sparse
 
 #=
 ### The `lift` operation
@@ -116,8 +137,8 @@ is_reachable
 
 # _Y can be reached by commuting Z and X._
 system = QuantumSystem(PAULIS[:Z], [PAULIS[:X]])
-is_reachable(GATES[:Y], system)
+is_reachable(PAULIS[:Y], system)
 
 # _Y cannot be reached by X alone._
 system = QuantumSystem([PAULIS[:X]])
-is_reachable(GATES[:Y], system)
+is_reachable(PAULIS[:Y], system)

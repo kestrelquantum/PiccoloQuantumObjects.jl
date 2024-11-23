@@ -2,6 +2,7 @@ module QuantumSystems
 
 export AbstractQuantumSystem
 export QuantumSystem
+export OpenQuantumSystem
 
 export get_drift
 export get_drives
@@ -75,15 +76,15 @@ struct QuantumSystem <: AbstractQuantumSystem
 end
 
 """
-    QuantumSystem(
-        H_drift::Matrix{<:Number},
-        H_drives::Vector{Matrix{<:Number}};
-        params=Dict{Symbol, Any}(),
-        kwargs...
-    )::QuantumSystem
+    QuantumSystem(H_drift::Matrix{<:Number}, H_drives::Vector{Matrix{<:Number}}; kwargs...)
+    QuantumSystem(H_drift::Matrix{<:Number}; kwargs...)
+    QuantumSystem(H_drives::Vector{Matrix{<:Number}}; kwargs...)
+    QuantumSystem(H::Function, n_drives::Int; kwargs...)
 
 Constructs a `QuantumSystem` object from the drift and drive Hamiltonian terms.
 """
+function QuantumSystem end
+
 function QuantumSystem(
     H_drift::AbstractMatrix{<:Number},
     H_drives::Vector{<:AbstractMatrix{<:Number}}; 
@@ -117,13 +118,13 @@ function QuantumSystem(
     )
 end
 
-function QuantumSystem(H_drives::Vector{<:AbstractMatrix{T}}; kwargs...) where T <: Number
+function QuantumSystem(H_drives::Vector{<:AbstractMatrix{ℂ}}; kwargs...) where ℂ <: Number
     @assert !isempty(H_drives) "At least one drive is required"
-    return QuantumSystem(spzeros(T, size(H_drives[1])), H_drives; kwargs...)
+    return QuantumSystem(spzeros(ℂ, size(H_drives[1])), H_drives; kwargs...)
 end
 
-QuantumSystem(H_drift::AbstractMatrix{T}; kwargs...) where T <: Number = 
-    QuantumSystem(H_drift, Matrix{T}[]; kwargs...)
+QuantumSystem(H_drift::AbstractMatrix{ℂ}; kwargs...) where ℂ <: Number = 
+    QuantumSystem(H_drift, Matrix{ℂ}[]; kwargs...)
 
 function generator_jacobian(G::Function)
     return function ∂G(a::Vector{Float64})
@@ -137,13 +138,58 @@ function QuantumSystem(H::Function, n_drives::Int; params=Dict{Symbol, Any}())
     G = a -> Isomorphisms.G(sparse(H(a)))
     ∂G = generator_jacobian(G)
     levels = size(H(zeros(n_drives)), 1)
-    return QuantumSystem(H, G, ∂G, levels, n_drives, params)
+    return QuantumSystem(H, G, ∂G, n_drives, levels, params)
 end
 
-function QuantumSystem(
-    H_drift::AbstractMatrix,
-    H_drives::Vector{<:AbstractMatrix},
-    dissipation_operators::Vector{<:AbstractMatrix};
+# ----------------------------------------------------------------------------- #
+# OpenQuantumSystem
+# ----------------------------------------------------------------------------- #
+
+"""
+    OpenQuantumSystem <: AbstractQuantumSystem
+
+A struct for storing open quantum dynamics and the appropriate gradients.
+
+# Additional fields
+- `dissipation_operators::Vector{AbstractMatrix}`: The dissipation operators.
+
+See also [`QuantumSystem`](@ref).
+"""
+struct OpenQuantumSystem <: AbstractQuantumSystem
+    H::Function
+    G::Function
+    ∂G::Function
+    n_drives::Int
+    levels::Int
+    dissipation_operators::Vector{Matrix{ComplexF64}}
+    params::Dict{Symbol, Any}
+end
+
+"""
+    OpenQuantumSystem(
+        H_drift::AbstractMatrix{<:Number},
+        H_drives::AbstractVector{<:AbstractMatrix{<:Number}}
+        dissipation_operators::AbstractVector{<:AbstractMatrix{<:Number}};
+        kwargs...
+    )
+    OpenQuantumSystem(
+        H_drift::Matrix{<:Number}, H_drives::AbstractVector{Matrix{<:Number}}; 
+        dissipation_operators::AbstractVector{<:AbstractMatrix{<:Number}}=Matrix{ComplexF64}[], 
+        kwargs...
+    )
+    OpenQuantumSystem(H_drift::Matrix{<:Number}; kwargs...)
+    OpenQuantumSystem(H_drives::Vector{Matrix{<:Number}}; kwargs...)
+    OpenQuantumSystem(H::Function, n_drives::Int; kwargs...)
+
+Constructs an `OpenQuantumSystem` object from the drift and drive Hamiltonian terms and
+dissipation operators.
+"""
+function OpenQuantumSystem end
+
+function OpenQuantumSystem(
+    H_drift::AbstractMatrix{<:Number},
+    H_drives::AbstractVector{<:AbstractMatrix{<:Number}};
+    dissipation_operators::AbstractVector{<:AbstractMatrix{<:Number}}=Matrix{ComplexF64}[],
     params::Dict{Symbol, Any}=Dict{Symbol, Any}()
 )
     levels = size(H_drift, 1)
@@ -157,10 +203,7 @@ function QuantumSystem(
     if isempty(dissipation_operators)
         𝒟 = zeros(size(𝒢_drift))
     else
-        𝒟 = Isomorphisms.iso(sum(
-            kron(conj(L), L) - 1 / 2 * Isomorphisms.ad_vec(L'L, anti=true) 
-            for L ∈ sparse.(dissipation_operators)
-        ))
+        𝒟 = sum(Isomorphisms.iso_D(L) for L ∈ sparse.(dissipation_operators))
     end
 
     if n_drives == 0
@@ -173,22 +216,56 @@ function QuantumSystem(
         ∂𝒢 = a -> 𝒢_drives
     end
 
-    return QuantumSystem(
+    return OpenQuantumSystem(
         H,
         𝒢,
         ∂𝒢,
-        levels,
         n_drives,
+        levels,
+        dissipation_operators,
         params
     )
+end
 
+function OpenQuantumSystem(
+    H_drift::AbstractMatrix{<:Number},
+    H_drives::AbstractVector{<:AbstractMatrix{<:Number}},
+    dissipation_operators::AbstractVector{<:AbstractMatrix{<:Number}};
+    params::Dict{Symbol, Any}=Dict{Symbol, Any}()
+)
+    return OpenQuantumSystem(
+        H_drift, H_drives; 
+        dissipation_operators=dissipation_operators,
+        params=params
+    )
+end
+
+function OpenQuantumSystem(
+    H_drives::AbstractVector{<:AbstractMatrix{ℂ}}; kwargs...
+) where ℂ <: Number
+    @assert !isempty(H_drives) "At least one drive is required"
+    return OpenQuantumSystem(spzeros(ℂ, size(H_drives[1])), H_drives; kwargs...)
+end
+
+OpenQuantumSystem(H_drift::AbstractMatrix{T}; kwargs...) where T <: Number = 
+    OpenQuantumSystem(H_drift, Matrix{T}[]; kwargs...)
+
+function OpenQuantumSystem(
+    H::Function, n_drives::Int; 
+    dissipation_operators::AbstractVector{<:AbstractMatrix{ℂ}}=Matrix{ComplexF64}[],
+    params=Dict{Symbol, Any}()
+) where ℂ <: Number
+    G = a -> Isomorphisms.G(Isomorphisms.ad_vec(sparse(H(a))))
+    ∂G = generator_jacobian(G)
+    levels = size(H(zeros(n_drives)), 1)
+    return OpenQuantumSystem(H, G, ∂G, n_drives, levels, dissipation_operators, params)
 end
 
 # ****************************************************************************** #
 
 @testitem "System creation" begin
-    H_drift = GATES[:Z]
-    H_drives = [GATES[:X], GATES[:Y]]
+    H_drift = PAULIS[:Z]
+    H_drives = [PAULIS[:X], PAULIS[:Y]]
     n_drives = length(H_drives)
 
     system = QuantumSystem(H_drift, H_drives)
@@ -203,12 +280,13 @@ end
     @test all(∂G .≈ QuantumSystems.generator_jacobian(system.G)(a))
 
     # repeat with a bigger system
-    H_drift = kron(GATES[:Z], GATES[:Z])
-    H_drives = [kron(GATES[:X], GATES[:I]), kron(GATES[:I], GATES[:X]),
-                kron(GATES[:Y], GATES[:I]), kron(GATES[:I], GATES[:Y])]
+    H_drift = kron(PAULIS[:Z], PAULIS[:Z])
+    H_drives = [kron(PAULIS[:X], PAULIS[:I]), kron(PAULIS[:I], PAULIS[:X]),
+                kron(PAULIS[:Y], PAULIS[:I]), kron(PAULIS[:I], PAULIS[:Y])]
     n_drives = length(H_drives)
 
     system = QuantumSystem(H_drift, H_drives)
+    @test system isa AbstractQuantumSystem
     @test system isa QuantumSystem
     @test get_drift(system) == H_drift
     @test get_drives(system) == H_drives
@@ -222,7 +300,7 @@ end
 
 @testitem "No drift system creation" begin
     H_drift = zeros(2, 2)
-    H_drives = [GATES[:X], GATES[:Y]]
+    H_drives = [PAULIS[:X], PAULIS[:Y]]
 
     sys1 = QuantumSystem(H_drift, H_drives)
     sys2 = QuantumSystem(H_drives)
@@ -232,7 +310,7 @@ end
 end
 
 @testitem "No drive system creation" begin
-    H_drift = GATES[:Z]
+    H_drift = PAULIS[:Z]
     H_drives = Matrix{ComplexF64}[]
 
     sys1 = QuantumSystem(H_drift, H_drives)
@@ -243,27 +321,38 @@ end
 end
 
 @testitem "System creation with Hamiltonian function" begin
-    H(a) = GATES[:Z] + a[1] * GATES[:X] + a[2] * GATES[:Y]
-    system = QuantumSystem(H, 2)
+    H(a) = PAULIS[:Z] + a[1] * PAULIS[:X]
+    system = QuantumSystem(H, 1)
     @test system isa QuantumSystem
-    @test get_drift(system) == GATES[:Z]
-    @test get_drives(system) == [GATES[:X], GATES[:Y]]
+    @test get_drift(system) == PAULIS[:Z]
+    @test get_drives(system) == [PAULIS[:X]]
 
     # test jacobians
-    compare = QuantumSystem(GATES[:Z], [GATES[:X], GATES[:Y]])
+    compare = QuantumSystem(PAULIS[:Z], [PAULIS[:X]])
     a = randn(system.n_drives)
     @test system.∂G(a) == compare.∂G(a)
+
+    # test three drives
+    H(a) = a[1] * PAULIS[:X] + a[2] * PAULIS[:Y] + a[3] * PAULIS[:Z]
+    system = QuantumSystem(H, 3)
+    @test system isa QuantumSystem
+    @test get_drift(system) == zeros(2, 2)
+    @test get_drives(system) == [PAULIS[:X], PAULIS[:Y], PAULIS[:Z]]
+
 end
 
-@testitem "System creation with dissipation" begin
-    H_drift = GATES[:Z]
-    H_drives = [GATES[:X], GATES[:Y]]
-    dissipation_operators = [GATES[:Z], GATES[:X]]
+@testitem "Open system creation" begin
+    H_drift = PAULIS[:Z]
+    # don't want drives == levels
+    H_drives = [PAULIS[:X]]
+    dissipation_operators = [PAULIS[:Z], PAULIS[:X]]
 
-    system = QuantumSystem(H_drift, H_drives, dissipation_operators)
-    @test system isa QuantumSystem
+    system = OpenQuantumSystem(H_drift, H_drives, dissipation_operators)
+    @test system isa AbstractQuantumSystem
+    @test system isa OpenQuantumSystem
     @test get_drift(system) == H_drift
     @test get_drives(system) == H_drives
+    @test system.dissipation_operators == dissipation_operators
 
     # test dissipation
     𝒢_drift = Isomorphisms.G(Isomorphisms.ad_vec(H_drift))
@@ -275,6 +364,47 @@ end
     @test length(∂G) == system.n_drives
     @test all(∂G .≈ QuantumSystems.generator_jacobian(system.G)(a))
     
+end
+
+@testitem "Open system alternate constructors" begin
+    H_drift = PAULIS[:Z]
+    # don't want drives == levels
+    H_drives = [PAULIS[:X]]
+    dissipation_operators = [PAULIS[:Z], PAULIS[:X]]
+
+    system = OpenQuantumSystem(
+        H_drift, H_drives, dissipation_operators=dissipation_operators
+    )
+    @test system isa OpenQuantumSystem
+    @test get_drift(system) == H_drift
+    @test get_drives(system) == H_drives
+    @test system.dissipation_operators == dissipation_operators
+
+    # no drift
+    system = OpenQuantumSystem(H_drives, dissipation_operators=dissipation_operators)
+    @test system isa OpenQuantumSystem
+    @test get_drift(system) == zeros(size(H_drift))
+    @test get_drives(system) == H_drives
+    @test system.dissipation_operators == dissipation_operators
+
+    # no drives
+    system = OpenQuantumSystem(
+        H_drift, dissipation_operators=dissipation_operators
+    )
+    @test system isa OpenQuantumSystem
+    @test system isa OpenQuantumSystem
+    @test get_drift(system) == H_drift
+    @test get_drives(system) == []
+    @test system.dissipation_operators == dissipation_operators
+    
+    # function
+    H = a -> PAULIS[:Z] + a[1] * PAULIS[:X]
+    system = OpenQuantumSystem(H, 1, dissipation_operators=dissipation_operators)
+    @test system isa OpenQuantumSystem
+    @test get_drift(system) == H_drift
+    @test get_drives(system) == H_drives
+    @test system.dissipation_operators == dissipation_operators
+
 end
 
 end
