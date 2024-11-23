@@ -6,19 +6,22 @@ using PiccoloQuantumObjects
 using SparseArrays # for visualization
 ⊗ = kron;
 
-#==========================================================================================
+#=
 # Quantum objects
 
-Most of the time, we work with quantum states and operators in the form of complex vectors
-and matrices. We provide a number of convenient ways to construct these objects.
-==========================================================================================#
+Most of the time, we set up problems using quantum states and operators in the form of
+complex vectors and matrices. We provide a number of convenient ways to construct these 
+objects. We also provide some tools for working with these objects, such as embedding
+operators in larger Hilbert spaces and selecting subspace indices.
 
-#==========================================================================================
+=#
+
+#=
 ## Quantum states
 
 We can construct quantum states from bitstrings or string representations. The string 
 representations use atomic notation (ground state `g`, excited state `e`, etc.).
-==========================================================================================#
+=#
 
 ket_from_string("g", [2])
 #
@@ -29,22 +32,22 @@ ket_from_string("(g+e)g", [2,2])
 ket_from_bitstring("01")
 #
 
-#==========================================================================================
+#=
 ## Quantum operators
 
 Frequently used operators are provided in [`PAULIS`](@ref) and [`GATES`](@ref).
-```@docs
+```@docs; canonical = false
 GATES
 ```
-Quantum operators can also be constructed from strings.
-==========================================================================================#
+=#
 
+# _Quantum operators can also be constructed from strings._
 operator_from_string("X")
 #
 
 operator_from_string("XZ")
 
-# Annihilation and creation operators are provided for oscillator systems.
+# _Annihilation and creation operators are provided for oscillator systems._
 a = annihilate(3)
 
 #
@@ -61,14 +64,14 @@ a'a
 haar_random(3)
 
 # If we want to generate random operations that are close to the identity, we can use the 
-# [`haar_random`](@ref) function.
+# [`haar_identity`](@ref) function.
 
 haar_identity(2, 0.1)
 
 #
 haar_identity(2, 0.01)
 
-#==========================================================================================
+#=
 
 ## Embedded operators
 Sometimes we want to embed a quantum operator into a larger Hilbert space, $\mathcal{H}$,
@@ -82,51 +85,51 @@ In quantum computing, the computation is encoded in a `subspace`, while the rema
 ### The `embed` and `unembed` functions
 
 The [`embed`](@ref) function allows to embed a quantum operator in a larger Hilbert space.
-```@docs
+```@docs; canonical = false
 embed
 ```
 
 The [`unembed`](@ref) function allows to unembed a quantum operator from a larger Hilbert 
 space.
-```@docs
+```@docs; canonical = false
 unembed
 ```
-==========================================================================================#
+=#
 
-# We can embed the two-level X gate into a multilevel system:
+# _Embed the two-level X gate into a multilevel system._
 
 levels = 3
 X = GATES[:X]
 subspace_indices = 1:2
 X_embedded = embed(X, subspace_indices, levels)
 
-# Unembed to retrieve the original operator:
+# _Unembed to retrieve the original operator._
 X_original = unembed(X_embedded, subspace_indices)
 
 #=
 ### The `EmbeddedOperator` type
 The [`EmbeddedOperator`](@ref) type stores information about an operator embedded in the subspace 
 of a larger quantum system.
-```@docs
+```@docs; canonical = false
 EmbeddedOperator
 ```
 
-We can construct an embedded operator in the same manner as the `embed` function:
-```@docs
+We can construct an embedded operator in the same manner as the `embed` function.
+```@docs; canonical = false
 EmbeddedOperator(subspace_operator::Matrix{<:Number}, subspace::AbstractVector{Int}, subsystem_levels::AbstractVector{Int})
 ```
 =#
 
-# For an X gate on the first qubit of two qubit, 3-level system:
+# _Embed an X gate in the first qubit subspace of two 3-level systems._
 gate = GATES[:X] ⊗ GATES[:I]
 subsystem_levels = [3, 3]
 subspace_indices = get_subspace_indices([1:2, 1:2], subsystem_levels)
 embedded_operator = EmbeddedOperator(gate, subspace_indices, subsystem_levels)
 
-# Show the full operator.
+# _Show the full operator._
 embedded_operator.operator .|> real |> sparse
 
-# We can get the original operator back.
+# _Get the original operator back._
 unembed(embedded_operator) .|> real |> sparse
 
 #=
@@ -135,7 +138,7 @@ unembed(embedded_operator) .|> real |> sparse
 ### The `get_subspace_indices` function
 The [`get_subspace_indices`](@ref) function is a convenient way to get the indices of a subspace in
 a larger quantum system. 
-```@docs
+```@docs; canonical = false
 get_subspace_indices
 ```
 Its dual function is [`get_leakage_indices`](@ref). 
@@ -144,11 +147,11 @@ Its dual function is [`get_leakage_indices`](@ref).
 
 get_subspace_indices(1:2, 5) |> collect, get_leakage_indices(1:2, 5) |> collect
 
-# Composite systems are supported. For example, we can get the indices of the qubit
-# subspace of two 3-level systems.
+# _Composite systems are supported. Get the indices of the qubit
+# subspace of two 3-level systems._
 get_subspace_indices([1:2, 1:2], [3, 3])
 
-# Qubits are assumed if the indices are not provided.
+# _Qubits are assumed if the indices are not provided._
 get_subspace_indices([3, 3])
 
 #
@@ -166,7 +169,7 @@ get_enr_subspace_indices(1, [3, 3])
 ### The `get_iso_vec_subspace_indices` function
 For isomorphic operators, the [`get_iso_vec_subspace_indices`](@ref) function can be used 
 to find the appropriate vector indices of the equivalent operator subspace.
-```@docs
+```@docs; canonical = false
 get_iso_vec_subspace_indices
 ```
 
@@ -183,8 +186,9 @@ allowing for leakage-suppressing code to disregard the uncoupled pure-leakage sp
 get_iso_vec_subspace_indices(1:2, 3)
 
 #
-ignore_pure_leakage = get_iso_vec_leakage_indices(1:2, 3)
+without_pure_leakage = get_iso_vec_leakage_indices(1:2, 3)
 
-#
-setdiff(get_iso_vec_leakage_indices(1:2, 3, ignore_pure_leakage=false), ignore_pure_leakage)
+# _Show the pure-leakage indices._
+with_pure_leakage = get_iso_vec_leakage_indices(1:2, 3, ignore_pure_leakage=false)
+setdiff(with_pure_leakage, without_pure_leakage)
 

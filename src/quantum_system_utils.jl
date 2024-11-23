@@ -259,8 +259,8 @@ function is_reachable(
     use_drift::Bool=true,
     kwargs...
 )
-    H_drift = get_H_drift(system)
-    H_drives = get_H_drives(system)
+    H_drift = get_drift(system)
+    H_drives = get_drives(system)
     if use_drift && !all(H_drift .≈ 0)
         push!(H_drives, H_drift)
     end

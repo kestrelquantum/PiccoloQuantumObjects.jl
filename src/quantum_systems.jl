@@ -3,8 +3,8 @@ module QuantumSystems
 export AbstractQuantumSystem
 export QuantumSystem
 
-export get_H_drift
-export get_H_drives
+export get_drift
+export get_drives
 
 using ..Isomorphisms
 using ..QuantumObjectUtils
@@ -30,10 +30,20 @@ abstract type AbstractQuantumSystem end
 # AbstractQuantumSystem methods
 # ----------------------------------------------------------------------------- #
 
-get_H_drift(sys::AbstractQuantumSystem) = sys.H(zeros(sys.n_drives))
+"""
+    get_drift(sys::AbstractQuantumSystem)
+    
+Returns the drift Hamiltonian of the system.
+"""
+get_drift(sys::AbstractQuantumSystem) = sys.H(zeros(sys.n_drives))
 
-function get_H_drives(sys::AbstractQuantumSystem)
-    H_drift = get_H_drift(sys)
+"""
+    get_drives(sys::AbstractQuantumSystem)
+
+Returns the drive Hamiltonians of the system.
+"""
+function get_drives(sys::AbstractQuantumSystem)
+    H_drift = get_drift(sys)
     # Basis vectors for controls will extract drive operators
     return [sys.H(I[1:sys.n_drives, i]) - H_drift for i ∈ 1:sys.n_drives]
 end
@@ -183,8 +193,8 @@ end
 
     system = QuantumSystem(H_drift, H_drives)
     @test system isa QuantumSystem
-    @test get_H_drift(system) == H_drift
-    @test get_H_drives(system) == H_drives
+    @test get_drift(system) == H_drift
+    @test get_drives(system) == H_drives
 
     # test jacobians
     a = randn(n_drives)
@@ -200,8 +210,8 @@ end
 
     system = QuantumSystem(H_drift, H_drives)
     @test system isa QuantumSystem
-    @test get_H_drift(system) == H_drift
-    @test get_H_drives(system) == H_drives
+    @test get_drift(system) == H_drift
+    @test get_drives(system) == H_drives
 
     # test jacobians
     a = randn(n_drives)
@@ -217,8 +227,8 @@ end
     sys1 = QuantumSystem(H_drift, H_drives)
     sys2 = QuantumSystem(H_drives)
 
-    @test get_H_drift(sys1) == get_H_drift(sys2) == H_drift
-    @test get_H_drives(sys1) == get_H_drives(sys2) == H_drives
+    @test get_drift(sys1) == get_drift(sys2) == H_drift
+    @test get_drives(sys1) == get_drives(sys2) == H_drives
 end
 
 @testitem "No drive system creation" begin
@@ -228,16 +238,16 @@ end
     sys1 = QuantumSystem(H_drift, H_drives)
     sys2 = QuantumSystem(H_drift)
 
-    @test get_H_drift(sys1) == get_H_drift(sys2) == H_drift
-    @test get_H_drives(sys1) == get_H_drives(sys2) == H_drives
+    @test get_drift(sys1) == get_drift(sys2) == H_drift
+    @test get_drives(sys1) == get_drives(sys2) == H_drives
 end
 
 @testitem "System creation with Hamiltonian function" begin
     H(a) = GATES[:Z] + a[1] * GATES[:X] + a[2] * GATES[:Y]
     system = QuantumSystem(H, 2)
     @test system isa QuantumSystem
-    @test get_H_drift(system) == GATES[:Z]
-    @test get_H_drives(system) == [GATES[:X], GATES[:Y]]
+    @test get_drift(system) == GATES[:Z]
+    @test get_drives(system) == [GATES[:X], GATES[:Y]]
 
     # test jacobians
     compare = QuantumSystem(GATES[:Z], [GATES[:X], GATES[:Y]])
@@ -252,8 +262,8 @@ end
 
     system = QuantumSystem(H_drift, H_drives, dissipation_operators)
     @test system isa QuantumSystem
-    @test get_H_drift(system) == H_drift
-    @test get_H_drives(system) == H_drives
+    @test get_drift(system) == H_drift
+    @test get_drives(system) == H_drives
 
     # test dissipation
     𝒢_drift = Isomorphisms.G(Isomorphisms.ad_vec(H_drift))

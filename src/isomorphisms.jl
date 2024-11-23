@@ -120,8 +120,14 @@ function iso_operator_to_iso_vec(Ũ::AbstractMatrix{ℝ}) where ℝ <: Real
     return Ũ⃗
 end
 
+@doc raw"""
+    iso_operator_to_operator(Ũ)
+"""
 iso_operator_to_operator(Ũ) = iso_vec_to_operator(iso_operator_to_iso_vec(Ũ))
 
+@doc raw"""
+    operator_to_iso_operator(U)
+"""
 operator_to_iso_operator(U) = iso_vec_to_iso_operator(operator_to_iso_vec(U))
 
 # ----------------------------------------------------------------------------- #

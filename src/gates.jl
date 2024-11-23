@@ -5,16 +5,18 @@ export GATES
 
 using TestItemRunner
 
-
+@doc raw"""
+The 2×2 Pauli matrics and identity.
+"""
 const PAULIS = (
     I = ComplexF64[1 0;
-                    0 1],
+                   0 1],
     X = ComplexF64[0 1;
-                    1 0],
+                   1 0],
     Y = ComplexF64[0 -im;
-                    im 0],
+                   im 0],
     Z = ComplexF64[1 0;
-                    0 -1],
+                   0 -1],
 )
 
 @doc raw"""

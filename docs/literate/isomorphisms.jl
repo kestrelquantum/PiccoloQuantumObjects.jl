@@ -34,19 +34,18 @@ iso_to_ket(ψ̃)
 
 We often need to convert a complex matrix `U` to a real vector `Ũ⃗`. We provoide the
 following isomorphisms to convert between the two representations.
-- [`iso_vec_to_operator(Ũ⃗::AbstractVector{ℝ})`](@ref)
-- [`operator_to_iso_vec(U::AbstractVector{ℂ})`](@ref)
-- [`iso_vec_to_iso_operator(Ũ⃗::AbstractVector{ℝ})`](@ref)
-- [`iso_operator_to_iso_vec(Ũ::AbstractMatrix{ℝ})`](@ref)
-- [`iso_operator_to_operator(Ũ::AbstractMatrix{ℝ})`](@ref)
-- [`operator_to_iso_operator(U::AbstractMatrix{ℂ})`](@ref)
+- [`iso_vec_to_operator`](@ref)`(Ũ⃗::AbstractVector{ℝ})`
+- [`operator_to_iso_vec`](@ref)`(U::AbstractVector{ℂ})`
+- [`iso_vec_to_iso_operator`](@ref)`(Ũ⃗::AbstractVector{ℝ})`
+- [`iso_operator_to_iso_vec`](@ref)`(Ũ::AbstractMatrix{ℝ})`
+- [`iso_operator_to_operator`](@ref)`(Ũ::AbstractMatrix{ℝ})`
+- [`operator_to_iso_operator`](@ref)`(U::AbstractMatrix{ℂ})`
 
-In additon, we provide [`mat(x::AbstractVector)`](@ref) to convert a vector `x` into a 
+In additon, we provide [`mat`](@ref)`(x::AbstractVector)` to convert a vector `x` into a 
 square matrix, as the inverse to Base's `vec`.
-
-Notice that Julia uses column-major order.
 =#
 
+# _Julia uses column-major order._
 U = [1 5; 2 6] + im * [3 7; 4 8]
 Ũ⃗ = operator_to_iso_vec(U)
 
@@ -58,8 +57,8 @@ iso_vec_to_operator(Ũ⃗)
 ## Density matrices
 
 The isomorphisms for density matrices are:
-- [`density_to_iso_vec(ρ::AbstractMatrix{ℂ})`](@ref)
-- [`iso_vec_to_density(ρ̃::AbstractVector{ℝ})`](@ref)
+- [`density_to_iso_vec`](@ref)`(ρ::AbstractMatrix{ℂ})`
+- [`iso_vec_to_density`](@ref)`(ρ̃::AbstractVector{ℝ})`
 
 !!! warning
     The isomorphism `density_to_iso_vec` is not the same as `operator_to_iso_vec`.

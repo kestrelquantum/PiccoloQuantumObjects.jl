@@ -92,12 +92,12 @@ function CompositeQuantumSystem(
 
     H_drift = sparse(H_drift)
     for (i, sys) ∈ enumerate(subsystems)
-        H_drift += lift(get_H_drift(sys), i, subsystem_levels)
+        H_drift += lift(get_drift(sys), i, subsystem_levels)
     end
 
     H_drives = sparse.(H_drives)
     for (i, sys) ∈ enumerate(subsystems)
-        for H_drive ∈ get_H_drives(sys)
+        for H_drive ∈ get_drives(sys)
             push!(H_drives, lift(H_drive, i, subsystem_levels))
         end
     end
@@ -155,7 +155,7 @@ function CompositeQuantumSystem(
     kwargs...
 )
     @assert !isempty(subsystems) "At least one subsystem is required"
-    T = eltype(get_H_drift(subsystems[1]))
+    T = eltype(get_drift(subsystems[1]))
     levels = prod([sys.levels for sys ∈ subsystems])
     return CompositeQuantumSystem(
         spzeros(T, (levels, levels)), Matrix{T}[], subsystems; kwargs...
@@ -206,7 +206,7 @@ end
     @test csys.n_drives == 1 + sum([sys.n_drives for sys ∈ subsystems])
     @test csys.subsystems == subsystems
     @test csys.subsystem_levels == subsystem_levels
-    @test get_H_drift(csys) ≈ g12 + lift(kron(PAULIS[:Z], PAULIS[:Z]), 1, subsystem_levels)end
+    @test get_drift(csys) ≈ g12 + lift(kron(PAULIS[:Z], PAULIS[:Z]), 1, subsystem_levels)end
 
 @testitem "Composite system from drift" begin
     using LinearAlgebra
@@ -223,7 +223,7 @@ end
     @test csys.n_drives == sum([sys.n_drives for sys ∈ subsystems])
     @test csys.subsystems == subsystems
     @test csys.subsystem_levels == subsystem_levels
-    @test get_H_drift(csys) ≈ g12
+    @test get_drift(csys) ≈ g12
 end
 
 @testitem "Composite system from drives" begin
@@ -240,7 +240,7 @@ end
     @test csys.n_drives == 2 + sum([sys.n_drives for sys ∈ subsystems])
     @test csys.subsystems == subsystems
     @test csys.subsystem_levels == subsystem_levels
-    @test get_H_drift(csys) ≈ lift(PAULIS[:Z], 1, subsystem_levels)
+    @test get_drift(csys) ≈ lift(PAULIS[:Z], 1, subsystem_levels)
 end
 
 end
