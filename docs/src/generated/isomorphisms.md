@@ -8,6 +8,8 @@ CollapsedDocStrings = true
 
 ````@example isomorphisms
 using PiccoloQuantumObjects
+using LinearAlgebra
+using SparseArrays # for visualization
 ````
 
 # Isomorphisms

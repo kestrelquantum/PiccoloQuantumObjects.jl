@@ -60,10 +60,10 @@ subspace_levels = [3, 2]
 lift(create(3) + annihilate(3), 1, subspace_levels)
 
 # create IXI operator 
-lift(PAULIS[:X], 2, 3) |> abs |> sparse
+lift(PAULIS[:X], 2, 3) |> sparse
 
 # create an XX operator acting on qubits 3 and 4 in a 4-qubit system
-lift([PAULIS[:X], PAULIS[:X]], [3, 4], 4) |> abs |> sparse
+lift([PAULIS[:X], PAULIS[:X]], [3, 4], 4) |> sparse
 
 
 #=
@@ -79,8 +79,8 @@ is_reachable
 
 # Y can be reached by commuting Z and X.
 system = QuantumSystem(PAULIS[:Z], [PAULIS[:X]])
-is_reachable(GATES[:Y], sys)
+is_reachable(GATES[:Y], system)
 
 # Y cannot be reached by X alone.
 system = QuantumSystem([PAULIS[:X]])
-is_reachable(GATES[:Y], sys)
+is_reachable(GATES[:Y], system)
