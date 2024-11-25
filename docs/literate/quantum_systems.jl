@@ -2,11 +2,17 @@
 # CollapsedDocStrings = true
 # ```
 
-# # Abstract Quantum Systems
+# # `Abstract Quantum Systems`
 
 using PiccoloQuantumObjects
 using SparseArrays # for visualization
 ⊗ = kron;
+
+#=
+```@docs; canonical = false
+AbstractQuantumSystem
+```
+=#
 
 #=
 
@@ -43,11 +49,11 @@ To extract the drift and drive Hamiltonians from a `QuantumSystem`, use the
 
 get_drift(system) |> sparse
 
-#
+# _Get the X drive._
 drives = get_drives(system)
 drives[1] |> sparse
 
-# 
+# _And the Y drive._
 drives[2] |> sparse
 
 #=
@@ -71,10 +77,15 @@ OpenQuantumSystem
 ```
 =#
 
+# _Add a dephasing and annihilation error channel._
 H_drives = [PAULIS[:X]]
-dissipation_operators = [PAULIS[:Z], PAULIS[:X]]
+a = annihilate(2)
+dissipation_operators = [a'a, a]
 system = OpenQuantumSystem(H_drives, dissipation_operators=dissipation_operators)
 system.dissipation_operators[1] |> sparse
+
+# 
+system.dissipation_operators[2] |> sparse
 
 #=
 !!! warning
@@ -112,9 +123,12 @@ drives[1] |> sparse
 drives[2] |> sparse
 
 #=
-### The `lift` operation
+### The `lift` function
 
 To lift operators acting on a subsystem into the full Hilbert space, use [`lift`](@ref).
+```@docs; canonical = false
+lift
+```
 =#
 
 # _Create an `a + a'` operator acting on the 1st subsystem of a qutrit and qubit system._
@@ -132,8 +146,8 @@ lift([PAULIS[:X], PAULIS[:X]], [3, 4], 4) .|> real |> sparse
 # Reachability tests
 
 Whether a quantum system can be used to reach a target state or operator can be tested
-by computing the dynamical Lie algebra, which is provided by the [`is_reachable`](@ref)
-function.
+by computing the dynamical Lie algebra. Access to this calculation is provided by the 
+[`is_reachable`](@ref) function.
 ```@docs; canonical = false
 is_reachable
 ```
