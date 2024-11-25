@@ -60,6 +60,41 @@ function lift(
     )
 end
 
+function lift(
+    operator::AbstractMatrix{T},
+    indices::AbstractVector{Int},
+    subsystem_levels::AbstractVector{Int},
+) where T <: Number
+    N = length(subsystem_levels)
+    L = [subsystem_levels[i] for i ∈ indices]
+    Lᶜ = [subsystem_levels[i] for i ∈ setdiff(1:N, indices)]
+    @assert prod(L) == size(operator, 1)
+
+    # Start with operator at the leading position
+    shape = vcat(L, Lᶜ)
+    array_shape = reverse(vcat(shape, shape))
+    full_operator = kron(operator, [Matrix{T}(I(l)) for l ∈ Lᶜ]...)
+
+    # Permute the array to match the actual subsystem order
+    order = vcat(indices, [i for i ∈ setdiff(1:N, indices)])
+    perm = sortperm(order)
+    array_perm = reverse(2length(perm) + 1 .- vcat(perm, perm .+ length(perm)))
+
+    return reshape(
+        PermutedDimsArray(reshape(full_operator, array_shape...), array_perm), 
+        size(full_operator)
+    )
+end
+
+function lift(
+    operator::AbstractMatrix{T},
+    indices::AbstractVector{Int},
+    n_qubits::Int;
+    levels::Int=2
+) where T <: Number
+    return lift(operator, indices, fill(levels, n_qubits))
+end
+
 # ----------------------------------------------------------------------------- #
 # Composite Quantum Systems
 # ----------------------------------------------------------------------------- #
@@ -190,6 +225,30 @@ end
     @test lift(pair, [1, 2], 3) ≈ kron(PAULIS[:X], PAULIS[:Y], I(2))
 end
 
+@testitem "Lift single operator into disjoint levels" begin
+    U = haar_random(2)
+    UU = kron(U, U)
+    UUU = kron(UU, U)
+    I2 = [1 0; 0 1]
+    I3 = [1 0 0; 0 1 0; 0 0 1]
+;
+
+    @test lift(UU, [1,2], [2,2,2]) ≈ kron(U, U, I2)
+    @test lift(UU, [2,3], [2,2,2]) ≈ kron(I2, U, U)
+    @test lift(UU, [1,3], [2,2,2]) ≈ kron(U, I2, U)
+
+    @test lift(UU, [1], [4, 2, 3]) ≈ kron(UU, I2, I3)
+    @test lift(UU, [2], [2, 4, 3]) ≈ kron(I2, UU, I3)
+    @test lift(UU, [3], [2, 3, 4]) ≈ kron(I2, I3, UU)
+
+    @test lift(UUU, [1, 3, 4], [2, 3, 2, 2]) ≈ kron(U, I3, UU)
+    @test lift(UUU, [1, 2, 4], [2, 2, 3, 2]) ≈ kron(UU, I3, U)
+
+    # Test qubit interface
+    @test lift(U, [1], 3) ≈ kron(U, I2, I2)
+    @test lift(UU, [2,3], 3) ≈ kron(I2, U, U)
+    @test lift(UU, [1,3], 3) ≈ kron(U, I2, U)
+end
 
 @testitem "Composite system" begin
     subsystem_levels = [4, 2, 2]
