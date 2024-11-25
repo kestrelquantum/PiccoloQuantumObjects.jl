@@ -76,7 +76,7 @@ struct EmbeddedOperator
     system spanned by the `subsystem_levels`.
     """
     function EmbeddedOperator(
-        subspace_operator::Matrix{<:Number},
+        subspace_operator::AbstractMatrix{<:Number},
         subspace::AbstractVector{Int},
         subsystem_levels::AbstractVector{Int}
     )
@@ -125,55 +125,31 @@ function EmbeddedOperator(subspace_operator::Symbol, args...; kwargs...)
     return EmbeddedOperator(GATES[subspace_operator], args...; kwargs...)
 end
 
-# TODO: TEST & DOCUMENT & FIX (and add a CompositeQuantumSystem method)
-# function EmbeddedOperator(
-#     subspace_operator::AbstractMatrix{<:Number},
-#     subsystem_indices::AbstractVector{Int},
-#     subspaces::AbstractVector{<:AbstractVector{Int}},
-#     subsystem_levels::AbstractVector{Int},
-# )
-#     @assert all(diff(subsystem_indices) .== 1) "subsystem_indices must be consecutive (for now)."
+function EmbeddedOperator(
+    subspace_operator::AbstractMatrix{<:Number},
+    subsystem_indices::AbstractVector{Int},
+    subspaces::AbstractVector{<:AbstractVector{Int}},
+    subsystem_levels::AbstractVector{Int}
+)
+    @assert length(subsystem_levels) == length(subspaces)
+    lifted_subspace_op = lift(subspace_operator, subsystem_indices, length.(subspaces))
+    subspace_indices = get_subspace_indices(subspaces, subsystem_levels)
+    return EmbeddedOperator(lifted_subspace_op, subspace_indices, subsystem_levels)
+end
 
-#     if size(subspace_operator, 1) == prod(length.(subspaces[subsystem_indices]))
-#         Is = Matrix{ComplexF64}.(I.(length.(subspaces)))
-#         Is[subsystem_indices[1]] = subspace_operator
-#         deleteat!(Is, subsystem_indices[2:end])
-#         subspace_operator = kron(Is...)
-#     elseif size(subspace_operator, 1) == prod(length.(subspaces))
-#         # Do nothing
-#     else
-#         throw(ArgumentError(
-#             "Operator size ($(size(subspace_operator, 1))) must match "
-#             *"the product of subsystem subspaces ($(prod(length.(subspaces))))."
-#         ))
-#     end
-
-#     return EmbeddedOperator(
-#         subspace_operator,
-#         get_subspace_indices(subspaces, subsystem_levels),
-#         subsystem_levels
-#     )
-# end
-
-# EmbeddedOperator(
-#     subspace_operator::AbstractMatrix{<:Number},
-#     composite_system::CompositeQuantumSystem,
-#     subsystem_index::Int;
-#     kwargs...
-# ) = EmbeddedOperator(subspace_operator, composite_system, [subsystem_index]; kwargs...)
-
-# function EmbeddedOperator(
-#     subspace_operators::AbstractVector,
-#     composite_system::CompositeQuantumSystem,
-#     subsystem_indices::AbstractVector{Int};
-#     kwargs...
-# )
-#     embedded_operators = [
-#         EmbeddedOperator(op, composite_system, i; kwargs...)
-#         for (op, i) ∈ zip(subspace_operators, subsystem_indices)
-#     ]
-#     return *(embedded_operators...)
-# end
+function EmbeddedOperator(
+    subspace_operator::AbstractMatrix{<:Number},
+    subsystem_indices::AbstractVector{Int},
+    subspaces::AbstractVector{<:AbstractVector{Int}},
+    composite_system::CompositeQuantumSystem;
+)
+    return EmbeddedOperator(
+        subspace_operator,
+        subsystem_indices,
+        subspaces,
+        composite_system.subsystem_levels
+    )
+end
 
 # ----------------------------------------------------------------------------- #
 #                           EmbeddedOperator operations                         #
@@ -598,5 +574,25 @@ end
     # drop the pure leakage state at op.operator[3, 3]
     @test get_iso_vec_leakage_indices(op) == [3, 6, 9, 12, 13, 14, 16, 17]
 end
+
+@testitem "Embedded operator subsystem levels" begin
+    using LinearAlgebra: I
+
+    # Embed CZ gate
+    subspace_op = GATES[:CZ]
+    subspace_op_indices = get_subspace_indices([1:2, 1:2], [3, 3])
+
+    embedded_op = EmbeddedOperator(subspace_op, [2, 3], [1:2, 1:2, 1:2], [3, 3, 3])
+    @test embedded_op isa EmbeddedOperator
+    @test unembed(embedded_op) == kron(I(2), subspace_op)
+    @test embedded_op.operator == kron(embed(I(2), 1:2, 3), embed(subspace_op, subspace_op_indices, 3^2))
+
+    # Composite system
+    system = CompositeQuantumSystem([QuantumSystem([P]) for P ∈ PAULIS])
+    embedded_op = EmbeddedOperator(subspace_op, [2, 3], fill(1:2, length(PAULIS)), system)
+    # 4 PAULIS
+    @test embedded_op.operator == kron(I(2), subspace_op, I(2))
+end
+
 
 end
