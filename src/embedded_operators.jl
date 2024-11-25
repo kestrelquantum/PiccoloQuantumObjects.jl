@@ -106,6 +106,11 @@ EmbeddedOperator(
     subspace_operator::Matrix{<:Number}, subspace::AbstractVector{Int}, levels::Int
 ) = EmbeddedOperator(subspace_operator, subspace, [levels])
 
+@doc raw"""
+    EmbeddedOperator(subspace_operator::AbstractMatrix{<:Number}, system::QuantumSystem; kwargs...)
+
+Embed the `subspace_operator` into a quantum `system`.
+"""
 function EmbeddedOperator(
     subspace_operator::AbstractMatrix{<:Number},
     system::QuantumSystem;
@@ -125,6 +130,18 @@ function EmbeddedOperator(subspace_operator::Symbol, args...; kwargs...)
     return EmbeddedOperator(GATES[subspace_operator], args...; kwargs...)
 end
 
+@doc raw"""
+    EmbeddedOperator(
+        subspace_operator::AbstractMatrix{<:Number},
+        subsystem_indices::AbstractVector{Int},
+        subspaces::AbstractVector{<:AbstractVector{Int}},
+        subsystem_levels::AbstractVector{Int}
+    )
+
+Embed the `subspace_operator` into the provided `subspaces` of a composite system, where 
+the `subsystem_indices` list the subspaces at which the operator is defined, and the
+`subsystem_levels` list the levels of the subsystems in which the operator is embedded. 
+"""
 function EmbeddedOperator(
     subspace_operator::AbstractMatrix{<:Number},
     subsystem_indices::AbstractVector{Int},

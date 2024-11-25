@@ -164,6 +164,21 @@ _Create an XX operator acting on qubits 3 and 4 in a 4-qubit system._
 lift([PAULIS[:X], PAULIS[:X]], [3, 4], 4) .|> real |> sparse
 ````
 
+We can also lift an operator that entangles different subspaces by passing the indices
+of the entangled subsystems.
+
+````@example quantum_systems
+#_Here's another way to create an XX operator acting on qubits 3 and 4 in a 4-qubit system._
+lift(kron(PAULIS[:X], PAULIS[:X]), [3, 4], 4) .|> real |> sparse
+````
+
+_Lift a CX gate acting on the 1st and 3rd qubits in a 3-qubit system._
+_The result is independent of the state of the second qubit._
+
+````@example quantum_systems
+lift(GATES[:CX], [1, 3], 3) .|> real |> sparse
+````
+
 # Reachability tests
 
 Whether a quantum system can be used to reach a target state or operator can be tested

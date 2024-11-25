@@ -133,6 +133,32 @@ embedded_operator.operator .|> real |> sparse
 unembed(embedded_operator) .|> real |> sparse
 
 #=
+Embedded operators for composite systems are also supported. 
+
+```@docs; canonical = false
+EmbeddedOperator(
+    subspace_operator::AbstractMatrix{<:Number},
+    subsystem_indices::AbstractVector{Int},
+    subspaces::AbstractVector{<:AbstractVector{Int}},
+    subsystem_levels::AbstractVector{Int}
+)
+```
+    
+This is a two step process.
+1. The provided subspace operator is [`lift`](@ref)-ed  from the `subsystem_indices` where
+    it is defined into the space spanned by the composite system's `subspaces`.
+2. The lifted operator is embedded into the full Hilbert space spanned by the 
+    `subsystem_levels`.
+=#
+
+# _Embed a CZ gate with control qubit 1 and target qubit 3 into a composite system made up 
+# of three 3-level systems. An identity is performed on qubit 2._
+subsystem_levels = [3, 3, 3]
+subspaces = [1:2, 1:2, 1:2]
+embedded_operator = EmbeddedOperator(GATES[:CZ], [1, 3], subspaces, subsystem_levels)
+unembed(embedded_operator) .|> real |> sparse
+
+#=
 ## Subspace and leakage indices
 
 ### The `get_subspace_indices` function
