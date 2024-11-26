@@ -10,45 +10,24 @@ export haar_identity
 export create
 export annihilate
 
-export ⊗
-
 using ..Gates
 
 using LinearAlgebra
 using TestItemRunner
 
-# TODO:
-# [ ] Remove need for oscillator operators (used by tests)
-# [ ] Allow multi-character symbols for operators_from_string
-# [ ] Remove need for otimes symbol or avoid import conflicts with other packages
-
-
-⊗(xs::AbstractVecOrMat...) = kron(xs...)
 
 @doc raw"""
-operator_from_string(operator::String; lookup::Dict{Symbol, AbstractMatrix}=PAULIS)
+    operator_from_string(operator::String; lookup=PAULIS)
 
-    Reduce the string (each character is one key) via operators from a dictionary.
-
+Reduce the string (each character is one key) via operators from a dictionary.
 """
 function operator_from_string(
     operator::String;
-    lookup::Dict{Symbol, <:AbstractMatrix}=PAULIS
+    lookup::NamedTuple{names, <:Tuple{Vararg{AbstractMatrix{<:Number}}}} where names=PAULIS
 )::Matrix{ComplexF64}
-    # TODO: allow multi-character keys, ['(', ')']
-
     # split string into keys and replace with operators
-    characters = [Symbol(c) for c ∈ operator]
-    operators = replace(characters, lookup...)
-
-    return foldr(kron, operators)
-end
-
-function cavity_state(state::Int, levels::Int)::Vector{ComplexF64}
-    @assert state ≤ levels - 1 "Level $state is not allowed for $levels levels"
-    ket = zeros(levels)
-    ket[state + 1] = 1
-    return ket
+    characters = [lookup[Symbol(c)] for c ∈ operator]
+    return foldr(kron, characters)
 end
 
 @doc raw"""
@@ -60,10 +39,6 @@ end
     )
 
 Construct a quantum state from a string ket representation.
-
-# Example
-
-# TODO: add example
 """
 function ket_from_string(
     ket::String,
@@ -95,15 +70,13 @@ function ket_from_string(
             superposition = split(ψᵢ, '+')
             superposition_states = [level_dict[Symbol(x)] for x ∈ superposition]
             @assert all(state ≤ l - 1 for state ∈ superposition_states) "Level $ψᵢ is not allowed for $l levels"
-            superposition_state = sum([
-                cavity_state(state, l) for state ∈ superposition_states
-            ])
+            superposition_state = sum([ComplexF64.(I[1:l, state + 1]) for state ∈ superposition_states])
             normalize!(superposition_state)
             push!(states, superposition_state)
         else
             state = level_dict[Symbol(ψᵢ)]
             @assert state ≤ l - 1 "Level $ψᵢ is not allowed for $l levels"
-            push!(states, cavity_state(state, l))
+            push!(states, ComplexF64.(I[1:l, state + 1]))
         end
     end
 
@@ -126,9 +99,9 @@ function ket_from_bitstring(ket::String)::Vector{ComplexF64}
     return foldr(kron, states)
 end
 
-###
-### Random operators
-###
+# --------------------------------------------------------------------------- #
+# Random operators
+# --------------------------------------------------------------------------- #
 
 @doc raw"""
     haar_random(n::Int)
@@ -147,7 +120,9 @@ end
 @doc raw"""
     haar_identity(n::Int, radius::Number)
 
-Generate a random unitary matrix close to the identity matrix using the Haar measure for an `n`-dimensional system with a given `radius`.
+Generate a random unitary matrix close to the identity matrix using the Haar measure for 
+an `n`-dimensional system with a given `radius`. The smaller the radius, the closer the
+matrix will be to the identity.
 """
 function haar_identity(n::Int, radius::Number)
     # Ginibre matrix
@@ -158,32 +133,27 @@ function haar_identity(n::Int, radius::Number)
     return F.Q * Λ
 end
 
-###
-### Oscillator operators
-###
+# --------------------------------------------------------------------------- #
+# Oscillator operators
+# --------------------------------------------------------------------------- #
 
 @doc raw"""
     annihilate(levels::Int)
 
-Get the annihilation operator for a system with `levels` levels.
+Get the annihilation operator for a system with `levels`.
 """
-function annihilate(levels::Int)::Matrix{ComplexF64}
-    return diagm(1 => map(sqrt, 1:levels - 1))
-end
+annihilate(levels::Int)::Matrix{ComplexF64} = diagm(1 => map(sqrt, 1:levels - 1))
 
 @doc raw"""
     create(levels::Int)
 
-Get the creation operator for a system with `levels` levels.
+Get the creation operator for a system with `levels`.
 """
-function create(levels::Int)
-    return collect(annihilate(levels)')
-end
+create(levels::Int) = collect(annihilate(levels)')
 
-# ============================================================================= #
+# ****************************************************************************** #
 
 @testitem "Test ket_from_bitstring function" begin
-    using LinearAlgebra
     @test ket_from_bitstring("0") == [1, 0]
     @test ket_from_bitstring("1") == [0, 1]
     @test ket_from_bitstring("00") == [1, 0, 0, 0]
@@ -192,5 +162,44 @@ end
     @test ket_from_bitstring("11") == [0, 0, 0, 1]
 end
 
+@testitem "Test annihilate" begin
+    @test annihilate(2) ≈ [0 1; 0 0]
+    @test annihilate(3) ≈ [0 1 0; 0 0 √2; 0 0 0]
+end
+
+@testitem "Test create" begin
+    @test create(2) ≈ [0 0; 1 0]
+    @test create(3) ≈ [0 0 0; 1 0 0; 0 √2 0]
+end
+
+@testitem "Test operator_from_string" begin
+    @test operator_from_string("X") ≈ [0 1; 1 0]
+    @test operator_from_string("XZ") ≈ [0 0 1 0; 0 0 0 -1; 1 0 0 0; 0 -1 0 0]
+end
+
+@testitem "Test ket_from_string" begin
+    @test ket_from_string("g", [2]) ≈ [1, 0]
+    @test ket_from_string("gg", [2, 2]) ≈ [1, 0, 0, 0]
+    @test ket_from_string("(g+e)g", [2, 2]) ≈ [1/√2, 0, 1/√2, 0]
+end
+
+@testitem "Test Haar random" begin
+    using LinearAlgebra: I
+    U = haar_random(2)
+    @test size(U) == (2, 2)
+    @test U'U ≈ I atol=1e-10
+
+    U = haar_random(3)
+    @test size(U) == (3, 3)
+    @test U'U ≈ I atol=1e-10
+
+    U = haar_identity(2, 0.1)
+    @test size(U) == (2, 2)
+    @test U'U ≈ I atol=1e-10
+
+    Id = haar_identity(3, 0.0)
+    @test size(Id) == (3, 3)
+    @test Id ≈ I atol=1e-10
+end
 
 end

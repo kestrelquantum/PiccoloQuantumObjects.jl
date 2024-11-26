@@ -1,23 +1,24 @@
 module Isomorphisms
 
+# Export state isomorphisms
 export mat
 export ket_to_iso
 export iso_to_ket
+export density_to_iso_vec
+export iso_vec_to_density
 export iso_vec_to_operator
 export iso_vec_to_iso_operator
 export operator_to_iso_vec
 export iso_operator_to_iso_vec
 export iso_operator_to_operator
 export operator_to_iso_operator
-export iso
-export iso_dm
-export ad_vec
+
+# Do not export Hamiltonian isomorphisms
 
 using LinearAlgebra
 using SparseArrays
 using TestItemRunner
 
-using ..QuantumObjectUtils
 
 @doc raw"""
     mat(x::AbstractVector)
@@ -26,7 +27,7 @@ Convert a vector `x` into a square matrix. The length of `x` must be a perfect s
 """
 function mat(x::AbstractVector)
     n = isqrt(length(x))
-    @assert n^2 == length(x) "Vector length must be a perfect square"
+    @assert n^2 ≈ length(x) "Vector length must be a perfect square"
     return reshape(x, n, n)
 end
 
@@ -36,18 +37,18 @@ end
 # ----------------------------------------------------------------------------- #
 
 @doc raw"""
-    ket_to_iso(ψ)
+    ket_to_iso(ψ::AbstractVector{<:Number})
 
 Convert a ket vector `ψ` into a complex vector with real and imaginary parts.
 """
-ket_to_iso(ψ)::Vector{Float64} = [real(ψ); imag(ψ)]
+ket_to_iso(ψ::AbstractVector{<:Number}) = [real(ψ); imag(ψ)]
 
 @doc raw"""
-    iso_to_ket(ψ̃)
+    iso_to_ket(ψ̃::AbstractVector{<:Real})
 
-Convert a complex vector `ψ̃` with real and imaginary parts into a ket vector.
+Convert a real isomorphism vector `ψ̃` into a ket vector.
 """
-iso_to_ket(ψ̃)::Vector{ComplexF64} =
+iso_to_ket(ψ̃::AbstractVector{<:Real}) = 
     ψ̃[1:div(length(ψ̃), 2)] + im * ψ̃[(div(length(ψ̃), 2) + 1):end]
 
 # ----------------------------------------------------------------------------- #
@@ -55,34 +56,30 @@ iso_to_ket(ψ̃)::Vector{ComplexF64} =
 # ----------------------------------------------------------------------------- #
 
 @doc raw"""
-    iso_vec_to_operator(Ũ⃗::AbstractVector)
+    iso_vec_to_operator(Ũ⃗::AbstractVector{ℝ}) where ℝ <: Real
 
 Convert a real vector `Ũ⃗` into a complex matrix representing an operator.
-
-Must be differentiable.
 """
-function iso_vec_to_operator(Ũ⃗::AbstractVector{R}) where R
+function iso_vec_to_operator(Ũ⃗::AbstractVector{ℝ}) where ℝ <: Real
     Ũ⃗_dim = div(length(Ũ⃗), 2)
     N = Int(sqrt(Ũ⃗_dim))
-    U = Matrix{complex(R)}(undef, N, N)
+    U = Matrix{complex(ℝ)}(undef, N, N)
     for i=0:N-1
-        U[:, i+1] .= @view(Ũ⃗[i * 2N .+ (1:N)]) + one(R) * im * @view(Ũ⃗[i * 2N .+ (N+1:2N)])
+        U[:, i+1] .= @view(Ũ⃗[i * 2N .+ (1:N)]) + one(ℝ) * im * @view(Ũ⃗[i * 2N .+ (N+1:2N)])
     end
     return U
 end
 
 @doc raw"""
-    iso_vec_to_iso_operator(Ũ⃗::AbstractVector)
+    iso_vec_to_iso_operator(Ũ⃗::AbstractVector{ℝ}) where ℝ <: Real
 
 Convert a real vector `Ũ⃗` into a real matrix representing an isomorphism operator.
-
-Must be differentiable.
 """
-function iso_vec_to_iso_operator(Ũ⃗::AbstractVector{R}) where R
+function iso_vec_to_iso_operator(Ũ⃗::AbstractVector{ℝ}) where ℝ <: Real
     N = Int(sqrt(length(Ũ⃗) ÷ 2))
-    Ũ = Matrix{R}(undef, 2N, 2N)
-    U_real = Matrix{R}(undef, N, N)
-    U_imag = Matrix{R}(undef, N, N)
+    Ũ = Matrix{ℝ}(undef, 2N, 2N)
+    U_real = Matrix{ℝ}(undef, N, N)
+    U_imag = Matrix{ℝ}(undef, N, N)
     for i=0:N-1
         U_real[:, i+1] .= @view(Ũ⃗[i*2N .+ (1:N)])
         U_imag[:, i+1] .= @view(Ũ⃗[i*2N .+ (N+1:2N)])
@@ -95,15 +92,13 @@ function iso_vec_to_iso_operator(Ũ⃗::AbstractVector{R}) where R
 end
 
 @doc raw"""
-    operator_to_iso_vec(U::AbstractMatrix{<:Complex})
+    operator_to_iso_vec(U::AbstractMatrix{ℂ}) where ℂ <: Number
 
 Convert a complex matrix `U` representing an operator into a real vector.
-
-Must be differentiable.
-"""
-function operator_to_iso_vec(U::AbstractMatrix{R}) where R
+""" 
+function operator_to_iso_vec(U::AbstractMatrix{ℂ}) where ℂ <: Number
     N = size(U,1)
-    Ũ⃗ = Vector{real(R)}(undef, N^2 * 2)
+    Ũ⃗ = Vector{real(ℂ)}(undef, N^2 * 2)
     for i=0:N-1
         Ũ⃗[i*2N .+ (1:N)] .= real(@view(U[:, i+1]))
         Ũ⃗[i*2N .+ (N+1:2N)] .= imag(@view(U[:, i+1]))
@@ -112,37 +107,49 @@ function operator_to_iso_vec(U::AbstractMatrix{R}) where R
 end
 
 @doc raw"""
-    iso_operator_to_iso_vec(Ũ::AbstractMatrix)
+    iso_operator_to_iso_vec(Ũ::AbstractMatrix{ℝ}) where ℝ <: Real
 
 Convert a real matrix `Ũ` representing an isomorphism operator into a real vector.
-
-Must be differentiable.
 """
-@views function iso_operator_to_iso_vec(Ũ::AbstractMatrix{R}) where R <: Real
-    return reshape(Ũ[:, 1:end÷2], :)
-    # N = size(Ũ, 1) ÷ 2
-    # Ũ⃗ = zeros(R, N^2 * 2)
-    # for i=0:N-1
-    #     Ũ⃗[i*2N .+ (1:2N)] .= @view Ũ[:, i+1]
-    # end
-    # return Ũ⃗
+function iso_operator_to_iso_vec(Ũ::AbstractMatrix{ℝ}) where ℝ <: Real
+    N = size(Ũ, 1) ÷ 2
+    Ũ⃗ = Vector{ℝ}(undef, N^2 * 2)
+    for i=0:N-1
+        Ũ⃗[i*2N .+ (1:2N)] .= @view Ũ[:, i+1]
+    end
+    return Ũ⃗
 end
 
+@doc raw"""
+    iso_operator_to_operator(Ũ)
+"""
 iso_operator_to_operator(Ũ) = iso_vec_to_operator(iso_operator_to_iso_vec(Ũ))
 
+@doc raw"""
+    operator_to_iso_operator(U)
+"""
 operator_to_iso_operator(U) = iso_vec_to_iso_operator(operator_to_iso_vec(U))
 
 # ----------------------------------------------------------------------------- #
-# Open systems
+#                             Density matrix                                    #
 # ----------------------------------------------------------------------------- #
 
-function ad_vec(H::AbstractMatrix{<:Number}; anti::Bool=false)
-    Id = sparse(eltype(H), I, size(H)...)
-    return Id ⊗ H - (-1)^anti * conj(H)' ⊗ Id
-end
+@doc raw"""
+    density_to_iso_vec(ρ::AbstractMatrix{<:Number})
+
+Returns the isomorphism `ρ⃗̃ = ket_to_iso(vec(ρ))` of a density matrix `ρ`
+"""
+density_to_iso_vec(ρ::AbstractMatrix{<:Number}) = ket_to_iso(vec(ρ))
+
+@doc raw"""
+    iso_vec_to_density(ρ⃗̃::AbstractVector{<:Real})
+
+Returns the density matrix `ρ` from its isomorphism `ρ⃗̃`
+"""
+iso_vec_to_density(ρ⃗̃::AbstractVector{<:Real}) = mat(iso_to_ket(ρ⃗̃))
 
 # ----------------------------------------------------------------------------- #
-# Hamiltonians
+#                             Hamiltonians                                      #
 # ----------------------------------------------------------------------------- #
 
 const Im2 = [
@@ -151,59 +158,150 @@ const Im2 = [
 ]
 
 @doc raw"""
-    G(H::AbstractMatrix)::Matrix{Float64}
+    iso(H::AbstractMatrix{<:Number})
 
-Returns the isomorphism of ``-iH``:
+Returns the isomorphism of ``H``:
 
 ```math
-G(H) = \widetilde{- i H} = \mqty(1 & 0 \\ 0 & 1) \otimes \Im(H) - \mqty(0 & -1 \\ 1 & 0) \otimes \Re(H)
+iso(H) = \widetilde{H} = \mqty(1 & 0 \\ 0 & 1) \otimes \Re(H) + \mqty(0 & -1 \\ 1 & 0) \otimes \Im(H)
 ```
 
-where ``\Im(H)`` and ``\Re(H)`` are the imaginary and real parts of ``H`` and the tilde indicates the standard isomorphism of a complex valued matrix:
+where ``\Im(H)`` and ``\Re(H)`` are the imaginary and real parts of ``H`` and the tilde 
+indicates the standard isomorphism of a complex valued matrix:
 
 ```math
 \widetilde{H} = \mqty(1 & 0 \\ 0 & 1) \otimes \Re(H) + \mqty(0 & -1 \\ 1 & 0) \otimes \Im(H)
 ```
-"""
-G(H::AbstractMatrix{<:Number}) = kron(I(2), imag(H)) - kron(Im2, real(H))
 
+See also [`Isomorphisms.G`](@ref), [`Isomorphisms.H`](@ref).
+"""
 iso(H::AbstractMatrix{<:Number}) = kron(I(2), real(H)) + kron(Im2, imag(H))
 
+@doc raw"""
+    G(H::AbstractMatrix)::Matrix{Float64}
 
+Returns the isomorphism of ``-iH``, i.e. ``G(H) = \text{iso}(-iH)``.
+
+See also [`Isomorphisms.iso`](@ref), [`Isomorphisms.H`](@ref).
 """
-    H(G::AbstractMatrix{<:Number})::Matrix{ComplexF64}
+G(H::AbstractMatrix{<:Number}) = iso(-im * H)
 
-Returns the inverse of `G(H) = iso(-iH)`, i.e. returns H
+@doc raw"""
+    H(G::AbstractMatrix{<:Real})
 
+Returns the inverse of ``G(H) = iso(-iH)``, i.e. returns H.
+
+See also [`Isomorphisms.iso`](@ref), [`Isomorphisms.G`](@ref).
 """
-function H(G::AbstractMatrix{<:Number})
+function H(G::AbstractMatrix{<:Real})
     dim = size(G, 1) ÷ 2
     H_imag = G[1:dim, 1:dim]
     H_real = -G[dim+1:end, 1:dim]
     return H_real + 1.0im * H_imag
 end
 
+@doc raw"""
+    ad_vec(H::AbstractMatrix{ℂ}; anti::Bool=false) where ℂ <: Number
+
+Returns the vectorized adjoint action of a matrix `H`:
+
+```math
+\text{ad_vec}(H) = \mqty(1 & 0 \\ 0 & 1) \otimes H - (-1)^{\text{anti}} \mqty(0 & 1 \\ 1 & 0) \otimes H^*
+```
 """
-    iso_dm(ρ::AbstractMatrix)
+function ad_vec(H::AbstractMatrix{ℂ}; anti::Bool=false) where ℂ <: Number
+    Id = sparse(ℂ, I, size(H)...)
+    return kron(Id, H) - (-1)^anti * kron(conj(H)', Id)
+end
 
-returns the isomorphism `ρ⃗̃ = ket_to_iso(vec(ρ))` of a density matrix `ρ`
+@doc raw"""
+    iso_D(L::AbstractMatrix{ℂ}) where ℂ <: Number
+
+Returns the isomorphic representation of the Lindblad dissipator `L`.
 """
-iso_dm(ρ::AbstractMatrix) = ket_to_iso(vec(ρ))
+function iso_D(L::AbstractMatrix{ℂ}) where ℂ <: Number
+    return iso(kron(conj(L), L) - 1 / 2 * ad_vec(L'L, anti=true))
+end
 
+# *************************************************************************** #
 
+@testitem "Test ket isomorphisms" begin
+    @test ket_to_iso([1.0, 2.0]) ≈ [1.0, 2.0, 0.0, 0.0]
+    @test ket_to_iso([-im, 2.0 + 3.0im]) ≈ [0.0, 2.0, -1.0, 3.0]
+    @test iso_to_ket([1.0, 2.0, 0.0, 0.0]) ≈ [1.0, 2.0]
+    @test iso_to_ket([0.0, 2.0, -1.0, 3.0]) ≈ [-im, 2.0 + 3.0im]
+end
 
-# =========================================================================== #
+@testitem "Test operator isomorphisms" begin
+    iso_vec_I = [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0]
+    @test mat([1.0, 2.0, 3.0, 4.0]) ≈ [1.0 3.0; 
+                                        2.0 4.0]
+    @test iso_vec_to_operator(iso_vec_I) ≈ [1.0 0.0;
+                                           0.0 1.0]
+    @test iso_vec_to_iso_operator(iso_vec_I) ≈ [1.0 0.0 0.0 0.0; 
+                                               0.0 1.0 0.0 0.0; 
+                                               0.0 0.0 1.0 0.0; 
+                                               0.0 0.0 0.0 1.0]
+    @test operator_to_iso_vec(Complex[1.0 0.0; 0.0 1.0]) ≈ iso_vec_I
+    @test iso_operator_to_iso_vec(iso_vec_to_iso_operator(iso_vec_I)) ≈ iso_vec_I
 
-@testitem "Test isomorphism utilities" begin
-    using LinearAlgebra
-    iso_vec = [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0]
-    @test mat([1.0, 2.0, 3.0, 4.0]) == [1.0 3.0; 2.0 4.0]
-    @test ket_to_iso([1.0, 2.0]) == [1.0, 2.0, 0.0, 0.0]
-    @test iso_to_ket([1.0, 2.0, 0.0, 0.0]) == [1.0, 2.0]
-    @test iso_vec_to_operator(iso_vec) == [1.0 0.0; 0.0 1.0]
-    @test iso_vec_to_iso_operator(iso_vec) == [1.0 0.0 -0.0 -0.0; 0.0 1.0 -0.0 -0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0]
-    @test operator_to_iso_vec(Complex[1.0 0.0; 0.0 1.0]) == iso_vec
-    @test iso_operator_to_iso_vec(iso_vec_to_iso_operator(iso_vec)) == iso_vec
+    iso_vec_XY = [0, 1, 0, 1, 1, 0, -1, 0]
+    @test iso_vec_to_operator(iso_vec_XY) ≈ [0 1-im; 
+                                             1+im 0]
+    @test iso_vec_to_iso_operator(iso_vec_XY) ≈ [0 1 0 1; 
+                                                 1 0 -1 0; 
+                                                 0 -1 0 1; 
+                                                 1 0 1 0]
+    @test operator_to_iso_vec(Complex[0.0 1-im; 1+im 0.0]) ≈ iso_vec_XY
+    @test iso_operator_to_iso_vec(iso_vec_to_iso_operator(iso_vec_XY)) ≈ iso_vec_XY
+end
+
+@testitem "Test density matrix isomorphisms" begin
+    # Totally mixed state
+    ρ = [1.0 0.0; 0.0 1.0]
+    ρ_iso = [1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0]
+    @test density_to_iso_vec(ρ) ≈ ρ_iso
+    @test iso_vec_to_density(ρ_iso) ≈ ρ
+
+    # Density matrix of a Bell state
+    ρ = [1.0 0.0 0.0 1.0; 0.0 0.0 0.0 0.0; 0.0 0.0 0.0 0.0; 1.0 0.0 0.0 1.0] / 2
+    @test iso_vec_to_density(density_to_iso_vec(ρ)) ≈ ρ
+
+    # Random
+    ρ1 = [1.0 1.0; 1.0 1.0] / 2
+    U1 = [-0.831976-0.101652im  -0.422559-0.344857im;
+          -0.527557+0.138444im   0.799158+0.252713im]
+    ρ2 = [1.0 0.0; 0.0 0.0]
+    U2 = [-0.784966-0.163279im   -0.597246-0.0215881im
+           0.597536+0.0109124im  -0.792681+0.120364im]
+    ρ = (U1*ρ1*U1' + U2*ρ2*U2') / 2
+    @test iso_vec_to_density(density_to_iso_vec(ρ)) ≈ ρ
+    @test iso_vec_to_density(density_to_iso_vec(ρ)) ≈ ρ
+end
+
+@testitem "Test Hamiltonian isomorphisms" begin
+    using PiccoloQuantumObjects: Isomorphisms.G, Isomorphisms.H, Isomorphisms.iso, Isomorphisms.ad_vec
+
+    H_real = [1.0 2.0; 3.0 4.0]
+    H_imag = [0.0 1.0; 1.0 0.0]
+    H_complex = H_real + 1.0im * H_imag
+    G_H = G(H_complex)
+
+    @test H(G_H) ≈ H_complex
+
+    @test G_H ≈ [0 1 1 2; 1 0 3 4; -1 -2 0 1; -3 -4 1 0]
+
+    @test iso(H_complex) ≈ [1 2 0 -1; 3 4 -1 0; 0 1 1 2; 1 0 3 4]
+
+    @test iso(-im * H_complex) ≈ G_H
+
+    op = [0 1; 1 0]
+    ad_H = ad_vec(op)
+    @test ad_H ≈ [0 1 -1 0; 1 0 0 -1; -1 0 0 1; 0 -1 1 0]
+
+    op = [0 -im; im 0]
+    ad_H = ad_vec(op)
+    @test ad_H ≈ [0 -im -im 0; im 0 0 -im; im 0 0 -im; 0 im im 0]
 end
 
 end
