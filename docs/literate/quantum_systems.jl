@@ -66,6 +66,19 @@ H(a) = PAULIS[:Z] + a[1] * PAULIS[:X] + a[2] * PAULIS[:Y]
 system = QuantumSystem(H, 2)
 get_drives(system)[1] |> sparse
 
+# _Create a noise model with a confusion matrix._
+function H(a; C::Matrix{Float64}=[1.0 0.0; 0.0 1.0])
+    b = C * a
+    return b[1] * PAULIS.X + b[2] * PAULIS.Y
+end
+
+system = QuantumSystem(a -> H(a, C=[0.99 0.01; -0.01 1.01]), 2)
+confused_drives = get_drives(system)
+confused_drives[1] |> sparse
+
+# 
+confused_drives[2] |> sparse
+
 #=
 ## Open quantum systems
 

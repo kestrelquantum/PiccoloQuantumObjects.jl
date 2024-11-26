@@ -74,6 +74,23 @@ system = QuantumSystem(H, 2)
 get_drives(system)[1] |> sparse
 ````
 
+_Create a noise model with a confusion matrix._
+
+````@example quantum_systems
+function H(a; C::Matrix{Float64}=[1.0 0.0; 0.0 1.0])
+    b = C * a
+    return b[1] * PAULIS.X + b[2] * PAULIS.Y
+end
+
+system = QuantumSystem(a -> H(a, C=[0.99 0.01; -0.01 1.01]), 2)
+confused_drives = get_drives(system)
+confused_drives[1] |> sparse
+````
+
+````@example quantum_systems
+confused_drives[2] |> sparse
+````
+
 ## Open quantum systems
 
 We can also construct an [`OpenQuantumSystem`](@ref) with Lindblad dynamics, enabling
