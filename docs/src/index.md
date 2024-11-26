@@ -4,6 +4,4 @@ CurrentModule = PiccoloQuantumObjects
 
 # PiccoloQuantumObjects
 
-Hello, World!
-
-Documentation for [PiccoloQuantumObjects](https://github.com/aarontrowbridge/PiccoloQuantumObjects.jl).
+Documentation for [PiccoloQuantumObjects](https://github.com/kestrelquantum/PiccoloQuantumObjects.jl).
