@@ -12,13 +12,13 @@ TestItemRunner = "f8b46487-2199-4994-9208-9a1283c18c0a"
 TestItems = "1c621080-faea-4a02-84b6-bbd5e436b8fe"
 
 [compat]
-ForwardDiff = "0.10.0"
-Reexport = "1.2.0"
-TestItems = "1.0.0"
-TestItemRunner = "1.0.0"
-julia = "1.10.0"
-SparseArrays = "1.10.0"
-LinearAlgebra = "1.10.0"
+ForwardDiff = "0.10"
+LinearAlgebra = "1.10, 1.11"
+Reexport = "1.2"
+SparseArrays = "1.10, 1.11"
+TestItems = "1.0"
+TestItemRunner = "1.0"
+julia = "1.10, 1.11"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
