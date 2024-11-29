@@ -32,7 +32,7 @@ A constant dictionary `GATES` containing common quantum gate matrices as complex
 - `GATES[:XI]` - Complex: A gate for complex operations.
 - `GATES[:sqrtiSWAP]` - Square root of iSWAP: Partially swaps two qubits with a phase.
 """
-GATES = (
+const GATES = (
     I = PAULIS.I,
 
     X = PAULIS.X,

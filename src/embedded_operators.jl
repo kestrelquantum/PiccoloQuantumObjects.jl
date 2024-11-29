@@ -123,9 +123,10 @@ function EmbeddedOperator(
 end
 
 function EmbeddedOperator(subspace_operator::Symbol, args...; kwargs...)
-    if subspace_operator ∉ keys(gates)
+    if subspace_operator ∉ keys(GATES)
         throw(ArgumentError("Operator must be a valid gate. "
-            *"See PiccoloQuantumObjects.gates.GATES dict for available gates."))
+            * "See PiccoloQuantumObjects.gates.GATES dict for available gates."
+        ))
     end
     return EmbeddedOperator(GATES[subspace_operator], args...; kwargs...)
 end
@@ -154,6 +155,17 @@ function EmbeddedOperator(
     return EmbeddedOperator(lifted_subspace_op, subspace_indices, subsystem_levels)
 end
 
+
+"""
+    EmbeddedOperator(
+        subspace_operator::AbstractMatrix{<:Number},
+        subsystem_indices::AbstractVector{Int},
+        subspaces::AbstractVector{<:AbstractVector{Int}},
+        composite_system::CompositeQuantumSystem
+    )
+
+Embed the `subspace_operator` into the provided `subspaces` of a composite system.
+"""
 function EmbeddedOperator(
     subspace_operator::AbstractMatrix{<:Number},
     subsystem_indices::AbstractVector{Int},
