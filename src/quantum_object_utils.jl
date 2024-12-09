@@ -13,7 +13,7 @@ export annihilate
 using ..Gates
 
 using LinearAlgebra
-using TestItemRunner
+using TestItems
 
 
 @doc raw"""
