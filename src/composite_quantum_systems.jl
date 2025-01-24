@@ -27,7 +27,7 @@ acting on the entire system spanning `subsystem_levels`.
 """
 function lift end
 
-function lift(operator::AbstractMatrix{T}, i::Int, subsystem_levels::Vector{Int}
+function lift(operator::AbstractMatrix{T}, i::Int, subsystem_levels::AbstractVector{Int}
 ) where T <: Number
     @assert size(operator, 1) == subsystem_levels[i] "Operator must match subsystem level."
     Is = [Matrix{T}(I(l)) for l ∈ subsystem_levels]
@@ -36,7 +36,7 @@ function lift(operator::AbstractMatrix{T}, i::Int, subsystem_levels::Vector{Int}
 end
 
 function lift(
-    operator::AbstractMatrix{T}, i::Int, n_qubits::Int; 
+    operator::AbstractMatrix{T}, i::Int, n_qubits::Int;
     levels::Int=size(operator, 1)
 ) where T <: Number
     return lift(operator, i, fill(levels, n_qubits))
@@ -45,7 +45,7 @@ end
 function lift(
     operators::AbstractVector{<:AbstractMatrix{T}},
     indices::AbstractVector{Int},
-    subsystem_levels::Vector{Int}
+    subsystem_levels::AbstractVector{Int}
 ) where T <: Number
     @assert length(operators) == length(indices)
     return prod([lift(op, i, subsystem_levels) for (op, i) ∈ zip(operators, indices)])
@@ -83,7 +83,7 @@ function lift(
     array_perm = reverse(2length(perm) + 1 .- vcat(perm, perm .+ length(perm)))
 
     return reshape(
-        PermutedDimsArray(reshape(full_operator, array_shape...), array_perm), 
+        PermutedDimsArray(reshape(full_operator, array_shape...), array_perm),
         size(full_operator)
     )
 end

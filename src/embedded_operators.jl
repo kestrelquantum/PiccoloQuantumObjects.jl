@@ -41,7 +41,7 @@ end
 """
     unembed(matrix::AbstractMatrix{<:Number}, subspace::AbstractVector{Int})
 
-Unembed a subspace operator from the `matrix`. This is equivalent to calling 
+Unembed a subspace operator from the `matrix`. This is equivalent to calling
 `matrix[subspace, subspace]`.
 """
 function unembed(matrix::AbstractMatrix{<:Number}, subspace::AbstractVector{Int})
@@ -55,11 +55,11 @@ end
 @doc raw"""
     EmbeddedOperator
 
-Embedded operator type to represent an operator embedded in a subspace of a larger 
+Embedded operator type to represent an operator embedded in a subspace of a larger
 quantum system.
 
 # Fields
-- `operator::Matrix{ComplexF64}`: Embedded operator of size 
+- `operator::Matrix{ComplexF64}`: Embedded operator of size
     `prod(subsystem_levels) x prod(subsystem_levels)`.
 - `subspace::Vector{Int}`: Indices of the subspace the operator is embedded in.
 - `subsystem_levels::Vector{Int}`: Levels of the subsystems in the composite system.
@@ -139,9 +139,9 @@ end
         subsystem_levels::AbstractVector{Int}
     )
 
-Embed the `subspace_operator` into the provided `subspaces` of a composite system, where 
+Embed the `subspace_operator` into the provided `subspaces` of a composite system, where
 the `subsystem_indices` list the subspaces at which the operator is defined, and the
-`subsystem_levels` list the levels of the subsystems in which the operator is embedded. 
+`subsystem_levels` list the levels of the subsystems in which the operator is embedded.
 """
 function EmbeddedOperator(
     subspace_operator::AbstractMatrix{<:Number},
@@ -236,13 +236,24 @@ end
 #                            Subspace Indices                                   #
 # ----------------------------------------------------------------------------- #
 
-basis_labels(subsystem_levels::AbstractVector{Int}; baseline::Int=1) =
-    kron([""], [string.(baseline:levels - 1 + baseline) for levels ∈ subsystem_levels]...)
+function basis_labels(subsystem_levels::AbstractVector{Int}; baseline::Int=1)
+    stringified_labels = []
+    for i = eachindex(subsystem_levels)
+        levels = subsystem_levels[i]
+        if i < length(subsystem_levels)
+            push!(stringified_labels, string.(baseline:levels - 1 + baseline) .* ",")
+        else
+            push!(stringified_labels, string.(baseline:levels - 1 + baseline))
+        end
+    end
+
+    return kron([""], stringified_labels...)
+end
 
 basis_labels(subsystem_level::Int; kwargs...) = basis_labels([subsystem_level]; kwargs...)
 
 """
-    get_subspace_indices(subspace::AbstractVector{Int}, levels::Int)    
+    get_subspace_indices(subspace::AbstractVector{Int}, levels::Int)
     get_subspace_indices(subspaces::Vector{<:AbstractVector{Int}}, subsystem_levels::AbstractVector{Int})
     get_subspace_indices(subsystem_levels::AbstractVector{Int}; subspace=1:2)
     get_subspace_indices(op::EmbeddedOperator)
@@ -262,7 +273,10 @@ function get_subspace_indices(
 )
     @assert length(subspaces) == length(subsystem_levels)
     return findall(
-        b -> all(l ∈ subspaces[i] for (i, l) ∈ enumerate([parse(Int, bᵢ) for bᵢ ∈ b])),
+        b -> all(
+            l ∈ subspaces[i]
+                for (i, l) ∈ enumerate([parse(Int, bᵢ) for bᵢ ∈ split(b, ",")])
+        ),
         basis_labels(subsystem_levels, baseline=1)
     )
 end
@@ -280,7 +294,7 @@ Get the indices for the subspace of the quantum system with an excitation restri
 function get_enr_subspace_indices(excitation_restriction::Int, subsystem_levels::AbstractVector{Int})
     # excitation_number uses baseline of zero
     return findall(
-        b -> sum([parse(Int, bᵢ) for bᵢ ∈ b]) ≤ excitation_restriction,
+        b -> sum([parse(Int, bᵢ) for bᵢ ∈ split(b, ",")]) ≤ excitation_restriction,
         basis_labels(subsystem_levels, baseline=0)
     )
 end
@@ -380,7 +394,7 @@ function get_iso_vec_leakage_indices(
 )
     leakage = get_leakage_indices(subspace, levels)
     iso_leakage_indices = Int[]
-    
+
     rows = ignore_pure_leakage ? subspace : 1:levels
 
     for j ∈ 1:levels
@@ -509,7 +523,7 @@ end
 
 @testitem "Basis labels" begin
     levels = [3, 3]
-    labels = ["11", "12", "13", "21", "22", "23", "31", "32", "33"]
+    labels = ["1,1", "1,2", "1,3", "2,1", "2,2", "2,3", "3,1", "3,2", "3,3"]
     @test EmbeddedOperators.basis_labels(levels, baseline=1) == labels
 
     labels = ["1", "2", "3"]
@@ -521,7 +535,7 @@ end
     @test EmbeddedOperators.basis_labels([3], baseline=0) == labels
 
     levels = [2, 2]
-    labels = ["00", "01", "10", "11"]
+    labels = ["0,0", "0,1", "1,0", "1,1"]
     @test EmbeddedOperators.basis_labels(levels, baseline=0) == labels
 end
 
@@ -579,7 +593,7 @@ end
     U_real = kron(rand(3, 3), rand(3, 3))
     U = U_real - im * U_real
     Ũ⃗ = operator_to_iso_vec(U)
-    
+
     subspace = get_subspace_indices([3, 3])
     iso_vec_subspace = get_iso_vec_subspace_indices([3, 3])
     all_leakage = get_iso_vec_leakage_indices([3, 3], ignore_pure_leakage=false)
@@ -594,12 +608,12 @@ end
 
 @testitem "Embedded operator subspace" begin
     op = EmbeddedOperator([1 2; 3 4] + im * [5 6; 7 8], 1:2, 3)
-    
+
     @test get_subspace_indices(op) == [1, 2]
     @test get_leakage_indices(op) == [3]
 
     @test get_iso_vec_subspace_indices(op) == [1, 2, 4, 5, 7, 8, 10, 11]
-    
+
     # drop the pure leakage state at op.operator[3, 3]
     @test get_iso_vec_leakage_indices(op) == [3, 6, 9, 12, 13, 14, 16, 17]
 end

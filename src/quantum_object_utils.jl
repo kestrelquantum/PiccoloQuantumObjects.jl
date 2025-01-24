@@ -34,7 +34,7 @@ end
     ket_from_string(
         ket::String,
         levels::Vector{Int};
-        level_dict=Dict(:g => 0, :e => 1, :f => 2, :h => 2),
+        level_dict=Dict(:g => 0, :e => 1, :f => 2, :h => 3, :i => 4, :j => 5, :k => 6, :l => 7),
         return_states=false
     )
 
@@ -43,7 +43,7 @@ Construct a quantum state from a string ket representation.
 function ket_from_string(
     ket::String,
     levels::Vector{Int};
-    level_dict=Dict(:g => 0, :e => 1, :f => 2, :h => 2),
+    level_dict=Dict(:g => 0, :e => 1, :f => 2, :h => 3, :i => 4, :j => 5, :k => 6, :l => 7),
     return_states=false
 )::Vector{ComplexF64}
     kets = []
@@ -120,7 +120,7 @@ end
 @doc raw"""
     haar_identity(n::Int, radius::Number)
 
-Generate a random unitary matrix close to the identity matrix using the Haar measure for 
+Generate a random unitary matrix close to the identity matrix using the Haar measure for
 an `n`-dimensional system with a given `radius`. The smaller the radius, the closer the
 matrix will be to the identity.
 """
