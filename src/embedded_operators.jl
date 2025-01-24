@@ -294,7 +294,7 @@ Get the indices for the subspace of the quantum system with an excitation restri
 function get_enr_subspace_indices(excitation_restriction::Int, subsystem_levels::AbstractVector{Int})
     # excitation_number uses baseline of zero
     return findall(
-        b -> sum([parse(Int, bᵢ) for bᵢ ∈ b]) ≤ excitation_restriction,
+        b -> sum([parse(Int, bᵢ) for bᵢ ∈ split(b, ",")]) ≤ excitation_restriction,
         basis_labels(subsystem_levels, baseline=0)
     )
 end
@@ -523,7 +523,7 @@ end
 
 @testitem "Basis labels" begin
     levels = [3, 3]
-    labels = ["11", "12", "13", "21", "22", "23", "31", "32", "33"]
+    labels = ["1,1", "1,2", "1,3", "2,1", "2,2", "2,3", "3,1", "3,2", "3,3"]
     @test EmbeddedOperators.basis_labels(levels, baseline=1) == labels
 
     labels = ["1", "2", "3"]
@@ -535,7 +535,7 @@ end
     @test EmbeddedOperators.basis_labels([3], baseline=0) == labels
 
     levels = [2, 2]
-    labels = ["00", "01", "10", "11"]
+    labels = ["0,0", "0,1", "1,0", "1,1"]
     @test EmbeddedOperators.basis_labels(levels, baseline=0) == labels
 end
 
