@@ -1,7 +1,7 @@
 name = "PiccoloQuantumObjects"
 uuid = "5a402ddf-f93c-42eb-975e-5582dcda653d"
 authors = ["Aaron Trowbridge <aaron.j.trowbridge@gmail.com> and contributors"]
-version = "0.1.1"
+version = "0.1.2"
 
 [deps]
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
@@ -13,11 +13,11 @@ TestItems = "1c621080-faea-4a02-84b6-bbd5e436b8fe"
 
 [compat]
 ForwardDiff = "0.10"
-LinearAlgebra = "1.10, 1.11"
 Reexport = "1.2"
-SparseArrays = "1.10, 1.11"
 TestItems = "1.0"
 TestItemRunner = "1.0"
+LinearAlgebra = "1.10, 1.11"
+SparseArrays = "1.10, 1.11"
 julia = "1.10, 1.11"
 
 [extras]
