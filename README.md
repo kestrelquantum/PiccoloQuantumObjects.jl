@@ -36,7 +36,9 @@
   </div>
 </div>
 
-<i> Make simple transformation of complex objects for quantum numerics. </i>
+<br>
+<i> Make simple transformation of complex objects for quantum numerics </i>
+<br>
 
 </div>
 <!--```-->

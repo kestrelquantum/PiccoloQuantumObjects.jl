@@ -36,15 +36,14 @@
   </div>
 </div>
 
-<i> Make simple transformation of complex objects for quantum numerics. </i>
+<br>
+<i> Make simple transformation of complex objects for quantum numerics </i>
+<br>
 
 </div>
 ```
 
 # PiccoloQuantumObjects
-
-
-## Description
 
 **PiccoloQuantumObjects.jl** is a Julia package for working with quantum objects. It provides tools for constructing and manipulating quantum states and operators. It is designed to be used with other packages in the [Piccolo.jl](https://github.com/kestrelquantum/Piccolo.jl) ecosystem, such as [QuantumCollocation.jl](https://github.com/kestrelquantum/QuantumCollocation.jl) and [NamedTrajectories.jl](https://github.com/kestrelquantum/NamedTrajectories.jl).
 
