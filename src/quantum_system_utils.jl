@@ -9,7 +9,7 @@ using ..Gates
 
 using LinearAlgebra
 using SparseArrays
-using TestItemRunner
+using TestItems
 
 
 commutator(A::AbstractMatrix{<:Number}, B::AbstractMatrix{<:Number}) = A * B - B * A

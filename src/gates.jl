@@ -3,7 +3,7 @@ module Gates
 export PAULIS
 export GATES
 
-using TestItemRunner
+using TestItems
 
 @doc raw"""
 The 2×2 Pauli matrics and identity.

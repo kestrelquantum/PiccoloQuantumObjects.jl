@@ -12,7 +12,7 @@ using ..QuantumObjectUtils
 
 using LinearAlgebra
 using SparseArrays
-using TestItemRunner
+using TestItems
 using ForwardDiff
 
 
