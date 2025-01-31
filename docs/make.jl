@@ -4,6 +4,18 @@ using Literate
 
 push!(LOAD_PATH, joinpath(@__DIR__, "..", "src"))
 
+@info "Building Documenter site for Piccolo.jl"
+open(joinpath(@__DIR__, "src", "index.md"), write = true) do io
+    for line in eachline(joinpath(@__DIR__, "..", "README.md"))
+        if occursin("<!--", line) && occursin("-->", line)
+            comment_content = match(r"<!--(.*)-->", line).captures[1]
+            write(io, comment_content * "\n")
+        else
+            write(io, line * "\n")
+        end
+    end
+end
+
 pages = [
     "Home" => "index.md",
     "Isomorphisms" => "generated/isomorphisms.md",
