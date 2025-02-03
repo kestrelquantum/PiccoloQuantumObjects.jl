@@ -8,7 +8,7 @@ using ..Isomorphisms
 
 using LinearAlgebra
 using SparseArrays
-using TestItemRunner
+using TestItems
 
 # ----------------------------------------------------------------------------- #
 # Lift operators

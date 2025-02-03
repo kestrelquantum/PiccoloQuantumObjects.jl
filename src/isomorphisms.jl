@@ -17,7 +17,7 @@ export operator_to_iso_operator
 
 using LinearAlgebra
 using SparseArrays
-using TestItemRunner
+using TestItems
 
 
 @doc raw"""

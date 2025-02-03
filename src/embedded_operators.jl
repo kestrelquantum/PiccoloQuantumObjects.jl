@@ -18,7 +18,7 @@ using ..QuantumSystems
 using ..CompositeQuantumSystems
 
 using LinearAlgebra
-using TestItemRunner
+using TestItems
 
 # ----------------------------------------------------------------------------- #
 #                             Embedding operations                              #
