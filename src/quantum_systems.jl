@@ -33,7 +33,7 @@ abstract type AbstractQuantumSystem end
 
 """
     get_drift(sys::AbstractQuantumSystem)
-    
+
 Returns the drift Hamiltonian of the system.
 """
 get_drift(sys::AbstractQuantumSystem) = sys.H(zeros(sys.n_drives))
@@ -87,17 +87,17 @@ function QuantumSystem end
 
 function QuantumSystem(
     H_drift::AbstractMatrix{<:Number},
-    H_drives::Vector{<:AbstractMatrix{<:Number}}; 
+    H_drives::Vector{<:AbstractMatrix{<:Number}};
     params::Dict{Symbol, Any}=Dict{Symbol, Any}(),
 )
     levels = size(H_drift, 1)
     H_drift = sparse(H_drift)
     G_drift = sparse(Isomorphisms.G(H_drift))
-    
+
     n_drives = length(H_drives)
     H_drives = sparse.(H_drives)
     G_drives = sparse.(Isomorphisms.G.(H_drives))
-    
+
     if n_drives == 0
         H = a -> H_drift
         G = a -> G_drift
@@ -123,7 +123,7 @@ function QuantumSystem(H_drives::Vector{<:AbstractMatrix{ℂ}}; kwargs...) where
     return QuantumSystem(spzeros(ℂ, size(H_drives[1])), H_drives; kwargs...)
 end
 
-QuantumSystem(H_drift::AbstractMatrix{ℂ}; kwargs...) where ℂ <: Number = 
+QuantumSystem(H_drift::AbstractMatrix{ℂ}; kwargs...) where ℂ <: Number =
     QuantumSystem(H_drift, Matrix{ℂ}[]; kwargs...)
 
 function generator_jacobian(G::Function)
@@ -157,8 +157,8 @@ See also [`QuantumSystem`](@ref).
 """
 struct OpenQuantumSystem <: AbstractQuantumSystem
     H::Function
-    G::Function
-    ∂G::Function
+    𝒢::Function
+    ∂𝒢::Function
     n_drives::Int
     levels::Int
     dissipation_operators::Vector{Matrix{ComplexF64}}
@@ -173,8 +173,8 @@ end
         kwargs...
     )
     OpenQuantumSystem(
-        H_drift::Matrix{<:Number}, H_drives::AbstractVector{Matrix{<:Number}}; 
-        dissipation_operators::AbstractVector{<:AbstractMatrix{<:Number}}=Matrix{ComplexF64}[], 
+        H_drift::Matrix{<:Number}, H_drives::AbstractVector{Matrix{<:Number}};
+        dissipation_operators::AbstractVector{<:AbstractMatrix{<:Number}}=Matrix{ComplexF64}[],
         kwargs...
     )
     OpenQuantumSystem(H_drift::Matrix{<:Number}; kwargs...)
@@ -190,7 +190,7 @@ function OpenQuantumSystem(
     H_drift::AbstractMatrix{<:Number},
     H_drives::AbstractVector{<:AbstractMatrix{<:Number}};
     dissipation_operators::AbstractVector{<:AbstractMatrix{<:Number}}=Matrix{ComplexF64}[],
-    params::Dict{Symbol, Any}=Dict{Symbol, Any}()
+    params::Dict{Symbol, <:Any}=Dict{Symbol, Any}()
 )
     levels = size(H_drift, 1)
     H_drift = sparse(H_drift)
@@ -231,10 +231,10 @@ function OpenQuantumSystem(
     H_drift::AbstractMatrix{<:Number},
     H_drives::AbstractVector{<:AbstractMatrix{<:Number}},
     dissipation_operators::AbstractVector{<:AbstractMatrix{<:Number}};
-    params::Dict{Symbol, Any}=Dict{Symbol, Any}()
+    params::Dict{Symbol, <:Any}=Dict{Symbol, Any}()
 )
     return OpenQuantumSystem(
-        H_drift, H_drives; 
+        H_drift, H_drives;
         dissipation_operators=dissipation_operators,
         params=params
     )
@@ -247,11 +247,11 @@ function OpenQuantumSystem(
     return OpenQuantumSystem(spzeros(ℂ, size(H_drives[1])), H_drives; kwargs...)
 end
 
-OpenQuantumSystem(H_drift::AbstractMatrix{T}; kwargs...) where T <: Number = 
+OpenQuantumSystem(H_drift::AbstractMatrix{T}; kwargs...) where T <: Number =
     OpenQuantumSystem(H_drift, Matrix{T}[]; kwargs...)
 
 function OpenQuantumSystem(
-    H::Function, n_drives::Int; 
+    H::Function, n_drives::Int;
     dissipation_operators::AbstractVector{<:AbstractMatrix{ℂ}}=Matrix{ComplexF64}[],
     params=Dict{Symbol, Any}()
 ) where ℂ <: Number
@@ -356,14 +356,14 @@ end
 
     # test dissipation
     𝒢_drift = Isomorphisms.G(Isomorphisms.ad_vec(H_drift))
-    @test system.G(zeros(system.n_drives)) != 𝒢_drift
+    @test system.𝒢(zeros(system.n_drives)) != 𝒢_drift
 
     # test jacobians (disspiation is constant)
     a = randn(system.n_drives)
-    ∂G = system.∂G(a)
-    @test length(∂G) == system.n_drives
-    @test all(∂G .≈ QuantumSystems.generator_jacobian(system.G)(a))
-    
+    ∂𝒢 = system.∂𝒢(a)
+    @test length(∂𝒢) == system.n_drives
+    @test all(∂𝒢 .≈ QuantumSystems.generator_jacobian(system.𝒢)(a))
+
 end
 
 @testitem "Open system alternate constructors" begin
@@ -396,7 +396,7 @@ end
     @test get_drift(system) == H_drift
     @test get_drives(system) == []
     @test system.dissipation_operators == dissipation_operators
-    
+
     # function
     H = a -> PAULIS[:Z] + a[1] * PAULIS[:X]
     system = OpenQuantumSystem(H, 1, dissipation_operators=dissipation_operators)
