@@ -127,7 +127,7 @@ QuantumSystem(H_drift::AbstractMatrix{ℂ}; kwargs...) where ℂ <: Number =
     QuantumSystem(H_drift, Matrix{ℂ}[]; kwargs...)
 
 function generator_jacobian(G::Function)
-    return function ∂G(a::Vector{Float64})
+    return function ∂G(a::AbstractVector{Float64})
         ∂G⃗ = ForwardDiff.jacobian(a_ -> vec(G(a_)), a)
         dim = Int(sqrt(size(∂G⃗, 1)))
         return [reshape(∂G⃗ⱼ, dim, dim) for ∂G⃗ⱼ ∈ eachcol(∂G⃗)]
@@ -405,6 +405,24 @@ end
     @test get_drives(system) == H_drives
     @test system.dissipation_operators == dissipation_operators
 
+end
+
+@testitem "Generator jacobian types" begin
+    GX = Isomorphisms.G(PAULIS.X)
+    GY = Isomorphisms.G(PAULIS.Y)
+    GZ = Isomorphisms.G(PAULIS.Z)
+    G(a) = GX + a[1] * GY + a[2] * GZ
+    ∂G = QuantumSystems.generator_jacobian(G)
+
+    traj_a = randn(Float64, 2, 3)
+    a₀ = traj_a[:, 1]
+    aᵥ = @views traj_a[:, 1]
+
+    @test ∂G(a₀) isa AbstractVector{<:AbstractMatrix{Float64}}
+    @test ∂G(a₀)[1] isa AbstractMatrix
+
+    @test ∂G(aᵥ) isa AbstractVector{<:AbstractMatrix{Float64}}
+    @test ∂G(aᵥ)[1] isa AbstractMatrix{Float64}
 end
 
 end
