@@ -65,6 +65,13 @@ A struct for storing quantum dynamics and the appropriate gradients.
 - `∂G::Function`: The generator jacobian function, a -> ∂G(a).
 - `levels::Int`: The number of levels in the system.
 - `n_drives::Int`: The number of drives in the system.
+
+# Constructors
+- QuantumSystem(H_drift::AbstractMatrix{<:Number}, H_drives::Vector{<:AbstractMatrix{<:Number}}; kwargs...)
+- QuantumSystem(H_drift::AbstractMatrix{<:Number}; kwargs...)
+- QuantumSystem(H_drives::Vector{<:AbstractMatrix{<:Number}}; kwargs...)
+- QuantumSystem(H::Function, n_drives::Int; kwargs...)
+
 """
 struct QuantumSystem <: AbstractQuantumSystem
     H::Function
@@ -74,16 +81,6 @@ struct QuantumSystem <: AbstractQuantumSystem
     levels::Int
     params::Dict{Symbol, Any}
 end
-
-"""
-    QuantumSystem(H_drift::Matrix{<:Number}, H_drives::Vector{Matrix{<:Number}}; kwargs...)
-    QuantumSystem(H_drift::Matrix{<:Number}; kwargs...)
-    QuantumSystem(H_drives::Vector{Matrix{<:Number}}; kwargs...)
-    QuantumSystem(H::Function, n_drives::Int; kwargs...)
-
-Constructs a `QuantumSystem` object from the drift and drive Hamiltonian terms.
-"""
-function QuantumSystem end
 
 function QuantumSystem(
     H_drift::AbstractMatrix{<:Number},
@@ -154,6 +151,23 @@ A struct for storing open quantum dynamics and the appropriate gradients.
 - `dissipation_operators::Vector{AbstractMatrix}`: The dissipation operators.
 
 See also [`QuantumSystem`](@ref).
+
+# Constructors
+- OpenQuantumSystem(
+        H_drift::AbstractMatrix{<:Number},
+        H_drives::AbstractVector{<:AbstractMatrix{<:Number}}
+        dissipation_operators::AbstractVector{<:AbstractMatrix{<:Number}};
+        kwargs...
+    )
+- OpenQuantumSystem(
+        H_drift::Matrix{<:Number}, H_drives::AbstractVector{Matrix{<:Number}};
+        dissipation_operators::AbstractVector{<:AbstractMatrix{<:Number}}=Matrix{ComplexF64}[],
+        kwargs...
+    )
+- OpenQuantumSystem(H_drift::Matrix{<:Number}; kwargs...)
+- OpenQuantumSystem(H_drives::Vector{Matrix{<:Number}}; kwargs...)
+- OpenQuantumSystem(H::Function, n_drives::Int; kwargs...)
+
 """
 struct OpenQuantumSystem <: AbstractQuantumSystem
     H::Function
@@ -164,27 +178,6 @@ struct OpenQuantumSystem <: AbstractQuantumSystem
     dissipation_operators::Vector{Matrix{ComplexF64}}
     params::Dict{Symbol, Any}
 end
-
-"""
-    OpenQuantumSystem(
-        H_drift::AbstractMatrix{<:Number},
-        H_drives::AbstractVector{<:AbstractMatrix{<:Number}}
-        dissipation_operators::AbstractVector{<:AbstractMatrix{<:Number}};
-        kwargs...
-    )
-    OpenQuantumSystem(
-        H_drift::Matrix{<:Number}, H_drives::AbstractVector{Matrix{<:Number}};
-        dissipation_operators::AbstractVector{<:AbstractMatrix{<:Number}}=Matrix{ComplexF64}[],
-        kwargs...
-    )
-    OpenQuantumSystem(H_drift::Matrix{<:Number}; kwargs...)
-    OpenQuantumSystem(H_drives::Vector{Matrix{<:Number}}; kwargs...)
-    OpenQuantumSystem(H::Function, n_drives::Int; kwargs...)
-
-Constructs an `OpenQuantumSystem` object from the drift and drive Hamiltonian terms and
-dissipation operators.
-"""
-function OpenQuantumSystem end
 
 function OpenQuantumSystem(
     H_drift::AbstractMatrix{<:Number},
