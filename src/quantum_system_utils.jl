@@ -16,7 +16,7 @@ commutator(A::AbstractMatrix{<:Number}, B::AbstractMatrix{<:Number}) = A * B - B
 
 is_hermitian(H::AbstractMatrix{<:Number}; atol=eps(Float32)) = all(isapprox.(H - H', 0.0, atol=atol))
 
-is_linearly_dependent(basis::Vector{<:AbstractMatrix{<:Number}}; kwargs...) = 
+is_linearly_dependent(basis::Vector{<:AbstractMatrix{<:Number}}; kwargs...) =
     is_linearly_dependent(stack(vec.(basis)); kwargs...)
 
 function is_linearly_dependent(M::AbstractMatrix; eps=eps(Float32), verbose=true)
@@ -134,7 +134,7 @@ function operator_algebra(
 
             if isempty(layer)
                 if verbose
-                    println("Subspace termination.")
+                    println(" Subspace termination.]")
                 end
                 subspace_termination = true
                 break
