@@ -15,6 +15,13 @@ using SparseArrays
 using TestItems
 using ForwardDiff
 
+function generator_jacobian(G::Function)
+    return function ∂G(a::AbstractVector{Float64})
+        ∂G⃗ = ForwardDiff.jacobian(a_ -> vec(G(a_)), a)
+        dim = Int(sqrt(size(∂G⃗, 1)))
+        return [reshape(∂G⃗ⱼ, dim, dim) for ∂G⃗ⱼ ∈ eachcol(∂G⃗)]
+    end
+end
 
 # ----------------------------------------------------------------------------- #
 # AbstractQuantumSystem
@@ -80,62 +87,65 @@ struct QuantumSystem <: AbstractQuantumSystem
     n_drives::Int
     levels::Int
     params::Dict{Symbol, Any}
-end
 
-function QuantumSystem(
-    H_drift::AbstractMatrix{<:Number},
-    H_drives::Vector{<:AbstractMatrix{<:Number}};
-    params::Dict{Symbol, Any}=Dict{Symbol, Any}(),
-)
-    levels = size(H_drift, 1)
-    H_drift = sparse(H_drift)
-    G_drift = sparse(Isomorphisms.G(H_drift))
+    """
+        QuantumSystem(H_drift::Matrix{<:Number}, H_drives::Vector{Matrix{<:Number}}; kwargs...)
+        QuantumSystem(H_drift::Matrix{<:Number}; kwargs...)
+        QuantumSystem(H_drives::Vector{Matrix{<:Number}}; kwargs...)
+        QuantumSystem(H::Function, n_drives::Int; kwargs...)
 
-    n_drives = length(H_drives)
-    H_drives = sparse.(H_drives)
-    G_drives = sparse.(Isomorphisms.G.(H_drives))
+    Constructs a `QuantumSystem` object from the drift and drive Hamiltonian terms.
+    """
+    function QuantumSystem end
 
-    if n_drives == 0
-        H = a -> H_drift
-        G = a -> G_drift
-        ∂G = a -> 0
-    else
-        H = a -> H_drift + sum(a .* H_drives)
-        G = a -> G_drift + sum(a .* G_drives)
-        ∂G = a -> G_drives
-    end
-
-    return QuantumSystem(
-        H,
-        G,
-        ∂G,
-        n_drives,
-        levels,
-        params
+    function QuantumSystem(
+        H_drift::AbstractMatrix{<:Number},
+        H_drives::Vector{<:AbstractMatrix{<:Number}};
+        params::Dict{Symbol, Any}=Dict{Symbol, Any}(),
     )
-end
+        levels = size(H_drift, 1)
+        H_drift = sparse(H_drift)
+        G_drift = sparse(Isomorphisms.G(H_drift))
 
-function QuantumSystem(H_drives::Vector{<:AbstractMatrix{ℂ}}; kwargs...) where ℂ <: Number
-    @assert !isempty(H_drives) "At least one drive is required"
-    return QuantumSystem(spzeros(ℂ, size(H_drives[1])), H_drives; kwargs...)
-end
+        n_drives = length(H_drives)
+        H_drives = sparse.(H_drives)
+        G_drives = sparse.(Isomorphisms.G.(H_drives))
 
-QuantumSystem(H_drift::AbstractMatrix{ℂ}; kwargs...) where ℂ <: Number =
-    QuantumSystem(H_drift, Matrix{ℂ}[]; kwargs...)
+        if n_drives == 0
+            H = a -> H_drift
+            G = a -> G_drift
+            ∂G = a -> 0
+        else
+            H = a -> H_drift + sum(a .* H_drives)
+            G = a -> G_drift + sum(a .* G_drives)
+            ∂G = a -> G_drives
+        end
 
-function generator_jacobian(G::Function)
-    return function ∂G(a::AbstractVector{Float64})
-        ∂G⃗ = ForwardDiff.jacobian(a_ -> vec(G(a_)), a)
-        dim = Int(sqrt(size(∂G⃗, 1)))
-        return [reshape(∂G⃗ⱼ, dim, dim) for ∂G⃗ⱼ ∈ eachcol(∂G⃗)]
+        return new(
+            H,
+            G,
+            ∂G,
+            n_drives,
+            levels,
+            params
+        )
     end
-end
 
-function QuantumSystem(H::Function, n_drives::Int; params=Dict{Symbol, Any}())
-    G = a -> Isomorphisms.G(sparse(H(a)))
-    ∂G = generator_jacobian(G)
-    levels = size(H(zeros(n_drives)), 1)
-    return QuantumSystem(H, G, ∂G, n_drives, levels, params)
+    function QuantumSystem(H_drives::Vector{<:AbstractMatrix{ℂ}}; kwargs...) where ℂ <: Number
+        @assert !isempty(H_drives) "At least one drive is required"
+        return QuantumSystem(spzeros(ℂ, size(H_drives[1])), H_drives; kwargs...)
+    end
+
+    QuantumSystem(H_drift::AbstractMatrix{ℂ}; kwargs...) where ℂ <: Number =
+        QuantumSystem(H_drift, Matrix{ℂ}[]; kwargs...)
+
+    function QuantumSystem(H::Function, n_drives::Int; params=Dict{Symbol, Any}())
+        G = a -> Isomorphisms.G(sparse(H(a)))
+        ∂G = generator_jacobian(G)
+        levels = size(H(zeros(n_drives)), 1)
+        return new(H, G, ∂G, n_drives, levels, params)
+    end
+
 end
 
 # ----------------------------------------------------------------------------- #
@@ -177,81 +187,103 @@ struct OpenQuantumSystem <: AbstractQuantumSystem
     levels::Int
     dissipation_operators::Vector{Matrix{ComplexF64}}
     params::Dict{Symbol, Any}
-end
 
-function OpenQuantumSystem(
-    H_drift::AbstractMatrix{<:Number},
-    H_drives::AbstractVector{<:AbstractMatrix{<:Number}};
-    dissipation_operators::AbstractVector{<:AbstractMatrix{<:Number}}=Matrix{ComplexF64}[],
-    params::Dict{Symbol, <:Any}=Dict{Symbol, Any}()
-)
-    levels = size(H_drift, 1)
-    H_drift = sparse(H_drift)
-    𝒢_drift = Isomorphisms.G(Isomorphisms.ad_vec(H_drift))
+    """
+    OpenQuantumSystem(
+        H_drift::AbstractMatrix{<:Number},
+        H_drives::AbstractVector{<:AbstractMatrix{<:Number}}
+        dissipation_operators::AbstractVector{<:AbstractMatrix{<:Number}};
+        kwargs...
+    )
+    OpenQuantumSystem(
+        H_drift::Matrix{<:Number}, H_drives::AbstractVector{Matrix{<:Number}};
+        dissipation_operators::AbstractVector{<:AbstractMatrix{<:Number}}=Matrix{ComplexF64}[],
+        kwargs...
+    )
+    OpenQuantumSystem(H_drift::Matrix{<:Number}; kwargs...)
+    OpenQuantumSystem(H_drives::Vector{Matrix{<:Number}}; kwargs...)
+    OpenQuantumSystem(H::Function, n_drives::Int; kwargs...)
 
-    n_drives = length(H_drives)
-    H_drives = sparse.(H_drives)
-    𝒢_drives = Isomorphisms.G.(Isomorphisms.ad_vec.(H_drives))
+    Constructs an `OpenQuantumSystem` object from the drift and drive Hamiltonian terms and
+    dissipation operators.
+    """
+    function OpenQuantumSystem end
 
-    if isempty(dissipation_operators)
-        𝒟 = zeros(size(𝒢_drift))
-    else
-        𝒟 = sum(Isomorphisms.iso_D(L) for L ∈ sparse.(dissipation_operators))
+    function OpenQuantumSystem(
+        H_drift::AbstractMatrix{<:Number},
+        H_drives::AbstractVector{<:AbstractMatrix{<:Number}};
+        dissipation_operators::AbstractVector{<:AbstractMatrix{<:Number}}=Matrix{ComplexF64}[],
+        params::Dict{Symbol, <:Any}=Dict{Symbol, Any}()
+    )
+        levels = size(H_drift, 1)
+        H_drift = sparse(H_drift)
+        𝒢_drift = Isomorphisms.G(Isomorphisms.ad_vec(H_drift))
+
+        n_drives = length(H_drives)
+        H_drives = sparse.(H_drives)
+        𝒢_drives = Isomorphisms.G.(Isomorphisms.ad_vec.(H_drives))
+
+        if isempty(dissipation_operators)
+            𝒟 = zeros(size(𝒢_drift))
+        else
+            𝒟 = sum(Isomorphisms.iso_D(L) for L ∈ sparse.(dissipation_operators))
+        end
+
+        if n_drives == 0
+            H = a -> H_drift
+            𝒢 = a -> 𝒢_drift + 𝒟
+            ∂𝒢 = a -> 0
+        else
+            H = a -> H_drift + sum(a .* H_drives)
+            𝒢 = a -> 𝒢_drift + sum(a .* 𝒢_drives) + 𝒟
+            ∂𝒢 = a -> 𝒢_drives
+        end
+
+        return new(
+            H,
+            𝒢,
+            ∂𝒢,
+            n_drives,
+            levels,
+            dissipation_operators,
+            params
+        )
     end
 
-    if n_drives == 0
-        H = a -> H_drift
-        𝒢 = a -> 𝒢_drift + 𝒟
-        ∂𝒢 = a -> 0
-    else
-        H = a -> H_drift + sum(a .* H_drives)
-        𝒢 = a -> 𝒢_drift + sum(a .* 𝒢_drives) + 𝒟
-        ∂𝒢 = a -> 𝒢_drives
+    function OpenQuantumSystem(
+        H_drift::AbstractMatrix{<:Number},
+        H_drives::AbstractVector{<:AbstractMatrix{<:Number}},
+        dissipation_operators::AbstractVector{<:AbstractMatrix{<:Number}};
+        params::Dict{Symbol, <:Any}=Dict{Symbol, Any}()
+    )
+        return OpenQuantumSystem(
+            H_drift, H_drives;
+            dissipation_operators=dissipation_operators,
+            params=params
+        )
     end
 
-    return OpenQuantumSystem(
-        H,
-        𝒢,
-        ∂𝒢,
-        n_drives,
-        levels,
-        dissipation_operators,
-        params
-    )
-end
+    function OpenQuantumSystem(
+        H_drives::AbstractVector{<:AbstractMatrix{ℂ}}; kwargs...
+    ) where ℂ <: Number
+        @assert !isempty(H_drives) "At least one drive is required"
+        return OpenQuantumSystem(spzeros(ℂ, size(H_drives[1])), H_drives; kwargs...)
+    end
 
-function OpenQuantumSystem(
-    H_drift::AbstractMatrix{<:Number},
-    H_drives::AbstractVector{<:AbstractMatrix{<:Number}},
-    dissipation_operators::AbstractVector{<:AbstractMatrix{<:Number}};
-    params::Dict{Symbol, <:Any}=Dict{Symbol, Any}()
-)
-    return OpenQuantumSystem(
-        H_drift, H_drives;
-        dissipation_operators=dissipation_operators,
-        params=params
-    )
-end
+    OpenQuantumSystem(H_drift::AbstractMatrix{T}; kwargs...) where T <: Number =
+        OpenQuantumSystem(H_drift, Matrix{T}[]; kwargs...)
 
-function OpenQuantumSystem(
-    H_drives::AbstractVector{<:AbstractMatrix{ℂ}}; kwargs...
-) where ℂ <: Number
-    @assert !isempty(H_drives) "At least one drive is required"
-    return OpenQuantumSystem(spzeros(ℂ, size(H_drives[1])), H_drives; kwargs...)
-end
+    function OpenQuantumSystem(
+        H::Function, n_drives::Int;
+        dissipation_operators::AbstractVector{<:AbstractMatrix{ℂ}}=Matrix{ComplexF64}[],
+        params=Dict{Symbol, Any}()
+    ) where ℂ <: Number
+        G = a -> Isomorphisms.G(Isomorphisms.ad_vec(sparse(H(a))))
+        ∂G = generator_jacobian(G)
+        levels = size(H(zeros(n_drives)), 1)
+        return new(H, G, ∂G, n_drives, levels, dissipation_operators, params)
+    end
 
-OpenQuantumSystem(H_drift::AbstractMatrix{T}; kwargs...) where T <: Number =
-    OpenQuantumSystem(H_drift, Matrix{T}[]; kwargs...)
-
-function OpenQuantumSystem(
-    H::Function, n_drives::Int;
-    dissipation_operators::AbstractVector{<:AbstractMatrix{ℂ}}=Matrix{ComplexF64}[],
-    params=Dict{Symbol, Any}()
-) where ℂ <: Number
-    G = a -> Isomorphisms.G(Isomorphisms.ad_vec(sparse(H(a))))
-    ∂G = generator_jacobian(G)
-    levels = size(H(zeros(n_drives)), 1)
-    return OpenQuantumSystem(H, G, ∂G, n_drives, levels, dissipation_operators, params)
 end
 
 # ****************************************************************************** #

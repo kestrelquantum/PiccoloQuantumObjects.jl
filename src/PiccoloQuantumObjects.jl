@@ -23,4 +23,10 @@ include("embedded_operators.jl")
 include("quantum_system_utils.jl")
 @reexport using .QuantumSystemUtils
 
+include("direct_sums.jl")
+@reexport using .DirectSums
+
+include("rollouts.jl")
+@reexport using .Rollouts
+
 end
