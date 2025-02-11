@@ -2,6 +2,7 @@ module DirectSums
 
 export add_suffix
 export get_suffix
+export remove_suffix
 export get_suffix_label
 export direct_sum
 
@@ -53,9 +54,6 @@ function direct_sum(sys1::QuantumSystem, sys2::QuantumSystem)
     @assert sys1.n_drives == sys2.n_drives "System 1 drives ($(sys1.n_drives)) must equal System 2 drives ($(sys2.n_drives))"
     n_drives = sys1.n_drives
     H = a -> direct_sum(sys1.H(a), sys2.H(a))
-    G = a -> direct_sum(sys1.G(a), sys2.G(a))
-    ∂G = a -> [direct_sum(∂Gᵢ(a), ∂Gⱼ(a)) for (∂Gᵢ, ∂Gⱼ) ∈ zip(sys1.∂G(a), sys2.∂G(a))]
-    levels = sys1.levels + sys2.levels
     direct_sum_params = Dict{Symbol, Dict{Symbol, Any}}()
     if haskey(sys1.params, :system_1)
         n_systems = length(keys(sys1.params))
@@ -80,7 +78,7 @@ function direct_sum(sys1::QuantumSystem, sys2::QuantumSystem)
             direct_sum_params[:system_2] = sys2.params
         end
     end
-    return QuantumSystem(H, G, ∂G, n_drives, levels, direct_sum_params)
+    return QuantumSystem(H, n_drives; params=direct_sum_params)
 end
 
 direct_sum(systems::AbstractVector{<:QuantumSystem}) = reduce(direct_sum, systems)
