@@ -164,7 +164,7 @@ struct OpenQuantumSystem <: AbstractQuantumSystem
     dissipation_operators::Vector{Matrix{ComplexF64}}
     params::Dict{Symbol, Any}
 
-"""
+    """
     OpenQuantumSystem(
         H_drift::AbstractMatrix{<:Number},
         H_drives::AbstractVector{<:AbstractMatrix{<:Number}}
