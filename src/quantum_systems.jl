@@ -16,7 +16,7 @@ using TestItems
 using ForwardDiff
 
 function generator_jacobian(G::Function)
-    return function ∂G(a::Vector{Float64})
+    return function ∂G(a::AbstractVector{Float64})
         ∂G⃗ = ForwardDiff.jacobian(a_ -> vec(G(a_)), a)
         dim = Int(sqrt(size(∂G⃗, 1)))
         return [reshape(∂G⃗ⱼ, dim, dim) for ∂G⃗ⱼ ∈ eachcol(∂G⃗)]
@@ -72,6 +72,13 @@ A struct for storing quantum dynamics and the appropriate gradients.
 - `∂G::Function`: The generator jacobian function, a -> ∂G(a).
 - `levels::Int`: The number of levels in the system.
 - `n_drives::Int`: The number of drives in the system.
+
+# Constructors
+- QuantumSystem(H_drift::AbstractMatrix{<:Number}, H_drives::Vector{<:AbstractMatrix{<:Number}}; kwargs...)
+- QuantumSystem(H_drift::AbstractMatrix{<:Number}; kwargs...)
+- QuantumSystem(H_drives::Vector{<:AbstractMatrix{<:Number}}; kwargs...)
+- QuantumSystem(H::Function, n_drives::Int; kwargs...)
+
 """
 struct QuantumSystem <: AbstractQuantumSystem
     H::Function
@@ -154,6 +161,23 @@ A struct for storing open quantum dynamics and the appropriate gradients.
 - `dissipation_operators::Vector{AbstractMatrix}`: The dissipation operators.
 
 See also [`QuantumSystem`](@ref).
+
+# Constructors
+- OpenQuantumSystem(
+        H_drift::AbstractMatrix{<:Number},
+        H_drives::AbstractVector{<:AbstractMatrix{<:Number}}
+        dissipation_operators::AbstractVector{<:AbstractMatrix{<:Number}};
+        kwargs...
+    )
+- OpenQuantumSystem(
+        H_drift::Matrix{<:Number}, H_drives::AbstractVector{Matrix{<:Number}};
+        dissipation_operators::AbstractVector{<:AbstractMatrix{<:Number}}=Matrix{ComplexF64}[],
+        kwargs...
+    )
+- OpenQuantumSystem(H_drift::Matrix{<:Number}; kwargs...)
+- OpenQuantumSystem(H_drives::Vector{Matrix{<:Number}}; kwargs...)
+- OpenQuantumSystem(H::Function, n_drives::Int; kwargs...)
+
 """
 struct OpenQuantumSystem <: AbstractQuantumSystem
     H::Function
@@ -406,6 +430,24 @@ end
     @test get_drives(system) == H_drives
     @test system.dissipation_operators == dissipation_operators
 
+end
+
+@testitem "Generator jacobian types" begin
+    GX = Isomorphisms.G(PAULIS.X)
+    GY = Isomorphisms.G(PAULIS.Y)
+    GZ = Isomorphisms.G(PAULIS.Z)
+    G(a) = GX + a[1] * GY + a[2] * GZ
+    ∂G = QuantumSystems.generator_jacobian(G)
+
+    traj_a = randn(Float64, 2, 3)
+    a₀ = traj_a[:, 1]
+    aᵥ = @views traj_a[:, 1]
+
+    @test ∂G(a₀) isa AbstractVector{<:AbstractMatrix{Float64}}
+    @test ∂G(a₀)[1] isa AbstractMatrix
+
+    @test ∂G(aᵥ) isa AbstractVector{<:AbstractMatrix{Float64}}
+    @test ∂G(aᵥ)[1] isa AbstractMatrix{Float64}
 end
 
 end
