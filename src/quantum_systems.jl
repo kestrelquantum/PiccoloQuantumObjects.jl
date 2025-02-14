@@ -101,7 +101,7 @@ struct QuantumSystem <: AbstractQuantumSystem
     function QuantumSystem(
         H_drift::AbstractMatrix{<:Number},
         H_drives::Vector{<:AbstractMatrix{<:Number}};
-        params::Dict{Symbol, Any}=Dict{Symbol, Any}(),
+        params::Dict{Symbol, <:Any}=Dict{Symbol, Any}(),
     )
         levels = size(H_drift, 1)
         H_drift = sparse(H_drift)
@@ -139,7 +139,7 @@ struct QuantumSystem <: AbstractQuantumSystem
     QuantumSystem(H_drift::AbstractMatrix{ℂ}; kwargs...) where ℂ <: Number =
         QuantumSystem(H_drift, Matrix{ℂ}[]; kwargs...)
 
-    function QuantumSystem(H::Function, n_drives::Int; params=Dict{Symbol, Any}())
+    function QuantumSystem(H::Function, n_drives::Int; params=Dict{Symbol, <:Any}())
         G = a -> Isomorphisms.G(sparse(H(a)))
         ∂G = generator_jacobian(G)
         levels = size(H(zeros(n_drives)), 1)
@@ -276,7 +276,7 @@ struct OpenQuantumSystem <: AbstractQuantumSystem
     function OpenQuantumSystem(
         H::Function, n_drives::Int;
         dissipation_operators::AbstractVector{<:AbstractMatrix{ℂ}}=Matrix{ComplexF64}[],
-        params=Dict{Symbol, Any}()
+        params::Dict{Symbol, <:Any}=Dict{Symbol, Any}()
     ) where ℂ <: Number
         G = a -> Isomorphisms.G(Isomorphisms.ad_vec(sparse(H(a))))
         ∂G = generator_jacobian(G)
@@ -321,6 +321,14 @@ end
     ∂G = system.∂G(a)
     @test length(∂G) == system.n_drives
     @test all(∂G .≈ QuantumSystems.generator_jacobian(system.G)(a))
+end
+
+@testitem "Parametric system creation" begin
+    system = QuantumSystem(PAULIS[:Z], [PAULIS[:X]], params=Dict(:a => 1))
+    @test system.params[:a] == 1
+
+    open_system = OpenQuantumSystem(PAULIS[:Z], [PAULIS[:X]], params=Dict(:a => 1))
+    @test open_system.params[:a] == 1
 end
 
 @testitem "No drift system creation" begin
