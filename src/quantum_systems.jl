@@ -101,7 +101,7 @@ struct QuantumSystem <: AbstractQuantumSystem
     function QuantumSystem(
         H_drift::AbstractMatrix{<:Number},
         H_drives::Vector{<:AbstractMatrix{<:Number}};
-        params::Dict{Symbol, <:Any}=Dict{Symbol, Any}(),
+        params::Dict{Symbol, <:Any}=Dict{Symbol, Any}()
     )
         levels = size(H_drift, 1)
         H_drift = sparse(H_drift)
@@ -139,7 +139,11 @@ struct QuantumSystem <: AbstractQuantumSystem
     QuantumSystem(H_drift::AbstractMatrix{ℂ}; kwargs...) where ℂ <: Number =
         QuantumSystem(H_drift, Matrix{ℂ}[]; kwargs...)
 
-    function QuantumSystem(H::Function, n_drives::Int; params=Dict{Symbol, <:Any}())
+    function QuantumSystem(
+        H::Function, 
+        n_drives::Int; 
+        params::Dict{Symbol, <:Any}=Dict{Symbol, Any}()
+    )
         G = a -> Isomorphisms.G(sparse(H(a)))
         ∂G = generator_jacobian(G)
         levels = size(H(zeros(n_drives)), 1)
@@ -283,6 +287,10 @@ struct OpenQuantumSystem <: AbstractQuantumSystem
         levels = size(H(zeros(n_drives)), 1)
         return new(H, G, ∂G, n_drives, levels, dissipation_operators, params)
     end
+
+    OpenQuantumSystem(system::QuantumSystem; kwargs...) = OpenQuantumSystem(
+        system.H, system.n_drives; kwargs...
+    )
 
 end
 
