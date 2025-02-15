@@ -72,7 +72,8 @@ function H(a; C::Matrix{Float64}=[1.0 0.0; 0.0 1.0])
     return b[1] * PAULIS.X + b[2] * PAULIS.Y
 end
 
-system = QuantumSystem(a -> H(a, C=[0.99 0.01; -0.01 1.01]), 2)
+C_matrix = [0.99 0.01; -0.01 1.01]
+system = QuantumSystem(a -> H(a, C=C_matrix), 2; params=Dict(:C => C_matrix))
 confused_drives = get_drives(system)
 confused_drives[1] |> sparse
 
@@ -185,3 +186,18 @@ is_reachable(PAULIS[:Y], system)
 # _Y cannot be reached by X alone._
 system = QuantumSystem([PAULIS[:X]])
 is_reachable(PAULIS[:Y], system)
+
+#=
+# Direct sums
+
+The direct sum of two quantum systems is constructed with the [`direct_sum`](@ref) function.
+```@docs; canonical = false
+direct_sum
+```
+=#
+
+# _Create a pair of non-interacting qubits._
+system_1 = QuantumSystem(PAULIS[:Z], [PAULIS[:X], PAULIS[:Y]])
+system_2 = QuantumSystem(PAULIS[:Z], [PAULIS[:X], PAULIS[:Y]])
+system = direct_sum(system_1, system_2)
+get_drift(system) |> sparse

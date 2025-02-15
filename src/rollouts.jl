@@ -2,6 +2,10 @@ module Rollouts
 
 export free_phase
 
+export fidelity
+export unitary_fidelity
+export unitary_free_phase_fidelity
+
 export rollout
 export open_rollout
 export unitary_rollout
@@ -24,13 +28,36 @@ using ProgressMeter
 using TestItems
 using ForwardDiff
 
-function fidelity(ψ::AbstractVector, ψ_goal::AbstractVector)
+
+"""
+    fidelity(ψ::AbstractVector{<:Number}, ψ_goal::AbstractVector{<:Number})
+
+Calculate the fidelity between two quantum states `ψ` and `ψ_goal`.
+"""
+function fidelity(
+    ψ::AbstractVector{<:Number}, 
+    ψ_goal::AbstractVector{<:Number}
+)
     return abs(dot(ψ, ψ_goal))^2
 end
 
+"""
+    fidelity(ρ::AbstractMatrix{<:Number}, ρ_goal::AbstractMatrix{<:Number})
+
+Calculate the fidelity between two density matrices `ρ` and `ρ_goal`.
+"""
+function fidelity(ρ::AbstractMatrix{<:Number}, ρ_goal::AbstractMatrix{<:Number})
+    return real(tr(ρ * ρ_goal))
+end
+
+"""
+    unitary_fidelity(U::AbstractMatrix{<:Number}, U_goal::AbstractMatrix{<:Number})
+
+Calculate the fidelity between unitary operators `U` and `U_goal` in the `subspace`.
+"""
 function unitary_fidelity(
-    U::AbstractMatrix,
-    U_goal::AbstractMatrix;
+    U::AbstractMatrix{<:Number},
+    U_goal::AbstractMatrix{<:Number};
     subspace::AbstractVector{Int}=axes(U, 1)
 )
     U = U[subspace, subspace]
@@ -39,28 +66,47 @@ function unitary_fidelity(
     return abs(tr(U' * U_goal))^2 / N^2
 end
 
+"""
+    free_phase(phases::AbstractVector{<:Real}, phase_operators::AbstractVector{<:AbstractMatrix{<:ℂ}})
+
+Rotate the `phase_operators` by the `phases` and return the Kronecker product.
+"""
 function free_phase(
-    ϕs::AbstractVector,
-    Hs::AbstractVector{<:AbstractMatrix}
-)
+    phases::AbstractVector{<:Real},
+    phase_operators::AbstractVector{<:AbstractMatrix{<:ℂ}}
+) where ℂ <: Number
     # NOTE: switch to expv for ForwardDiff
-    # return reduce(kron, [exp(im * ϕ * H) for (ϕ, H) ∈ zip(ϕs, Hs)])
-    Id = Matrix{eltype(Hs[1])}(I, size(Hs[1]))
-    return reduce(kron, [expv(im * ϕ, H, Id) for (ϕ, H) ∈ zip(ϕs, Hs)])
+    # return reduce(kron, [exp(im * ϕ * H) for (ϕ, H) ∈ zip(phases, phase_operators)])
+    Id = Matrix{ℂ}(I, size(phase_operators[1]))
+    return reduce(kron, [expv(im * ϕ, H, Id) for (ϕ, H) ∈ zip(phases, phase_operators)])
 end
 
+"""
+    unitary_free_phase_fidelity(
+        U::AbstractMatrix,
+        U_goal::AbstractMatrix,
+        phases::AbstractVector{<:Real},
+        phase_operators::AbstractVector{<:AbstractMatrix};
+        subspace::AbstractVector{Int}=axes(U, 1)
+    )
+
+Calculate the fidelity between unitary operators `U` and `U_goal` in the `subspace`,
+including the `phase` rotations about the `phase_operators`.
+"""
 function unitary_free_phase_fidelity(
     U::AbstractMatrix,
     U_goal::AbstractMatrix,
-    ϕs::AbstractVector{<:Real},
+    phases::AbstractVector{<:Real},
     phase_operators::AbstractVector{<:AbstractMatrix};
     subspace::AbstractVector{Int}=axes(U, 1)
 )
-    R = free_phase(ϕs, phase_operators)
+    R = free_phase(phases, phase_operators)
     return unitary_fidelity(R * U, U_goal; subspace=subspace)
 end
 
 
+# ----------------------------------------------------------------------------- #
+# Utilities
 # ----------------------------------------------------------------------------- #
 
 """
@@ -93,8 +139,20 @@ end
 
 @doc raw"""
     rollout(
-        ψ̃_init::AbstractVector{<:Float64},
-        controls::AbstractMatrix,
+        ψ̃_init::AbstractVector{<:Real},
+        controls::AbstractMatrix{<:Real},
+        Δt::AbstractVector,
+        system::AbstractQuantumSystem
+    )
+    rollout(
+        ψ_init::AbstractVector{<:Complex},
+        controls::AbstractMatrix{<:Real},
+        Δt::AbstractVector,
+        system::AbstractQuantumSystem
+    )
+    rollout(
+        inits::AbstractVector{<:AbstractVector},
+        controls::AbstractMatrix{<:Real},
         Δt::AbstractVector,
         system::AbstractQuantumSystem
     )
@@ -107,9 +165,11 @@ the exponential action, `expv`. Otherwise, it is expected to have a signature li
 
 Types should allow for autodifferentiable controls and times.
 """
+function rollout end
+
 function rollout(
     ψ̃_init::AbstractVector{<:Real},
-    controls::AbstractMatrix,
+    controls::AbstractMatrix{<:Real},
     Δt::AbstractVector,
     system::AbstractQuantumSystem;
     show_progress=false,
@@ -148,10 +208,34 @@ function rollout(
     return vcat([rollout(state, args...; kwargs...) for state ∈ inits]...)
 end
 
+"""
+    rollout_fidelity(
+        ψ̃_init::AbstractVector{<:Real},
+        ψ̃_goal::AbstractVector{<:Real},
+        controls::AbstractMatrix{<:Real},
+        Δt::AbstractVector,
+        system::AbstractQuantumSystem
+    )
+    rollout_fidelity(
+        ψ_init::AbstractVector{<:Complex},
+        ψ_goal::AbstractVector{<:Complex},
+        controls::AbstractMatrix{<:Real},
+        Δt::AbstractVector,
+        system::AbstractQuantumSystem
+    )
+    rollout_fidelity(
+        trajectory::NamedTrajectory,
+        system::AbstractQuantumSystem
+    )
+
+Calculate the fidelity between the final state of a rollout and a goal state.
+"""
+function rollout_fidelity end
+
 function rollout_fidelity(
     ψ̃_init::AbstractVector{<:Real},
     ψ̃_goal::AbstractVector{<:Real},
-    controls::AbstractMatrix,
+    controls::AbstractMatrix{<:Real},
     Δt::AbstractVector,
     system::AbstractQuantumSystem;
     kwargs...
@@ -165,7 +249,7 @@ end
 function rollout_fidelity(
     ψ_init::AbstractVector{<:Complex},
     ψ_goal::AbstractVector{<:Complex},
-    controls::AbstractMatrix,
+    controls::AbstractMatrix{<:Real},
     Δt::AbstractVector,
     system::AbstractQuantumSystem;
     kwargs...
@@ -182,7 +266,7 @@ function rollout_fidelity(
 )
     fids = []
     for name ∈ trajectory.names
-        if startswith(name, state_name)
+        if startswith(string(name), string(state_name))
             controls = trajectory[control_name]
             init = trajectory.initial[name]
             goal = trajectory.goal[name]
@@ -200,9 +284,9 @@ end
 """
     open_rollout(
         ρ⃗₁::AbstractVector{<:Complex},
-        controls::AbstractMatrix,
+        controls::AbstractMatrix{<:Real},
         Δt::AbstractVector,
-        system::AbstractQuantumSystem;
+        system::OpenQuantumSystem;
         kwargs...
     )
 
@@ -210,9 +294,9 @@ Rollout a quantum state `ρ⃗₁` under the control `controls` for a time `Δt`
 
 # Arguments
 - `ρ⃗₁::AbstractVector{<:Complex}`: Initial state vector
-- `controls::AbstractMatrix`: Control matrix
+- `controls::AbstractMatrix{<:Real}`: Control matrix
 - `Δt::AbstractVector`: Time steps
-- `system::AbstractQuantumSystem`: Quantum system
+- `system::OpenQuantumSystem`: Quantum system
 
 # Keyword Arguments
 - `show_progress::Bool=false`: Show progress bar
@@ -220,11 +304,13 @@ Rollout a quantum state `ρ⃗₁` under the control `controls` for a time `Δt`
 - `exp_vector_product::Bool`: Infer whether the integrator is an exponential-vector product
 
 """
+function open_rollout end
+
 function open_rollout(
     ρ⃗̃_init::AbstractVector{<:Real},
-    controls::AbstractMatrix,
+    controls::AbstractMatrix{<:Real},
     Δt::AbstractVector,
-    system::AbstractQuantumSystem;
+    system::OpenQuantumSystem;
     show_progress=false,
     integrator=expv,
     exp_vector_product=infer_is_evp(integrator),
@@ -255,9 +341,9 @@ end
 """
     open_rollout(
         ρ₁::AbstractMatrix{<:Complex},
-        controls::AbstractMatrix,
+        controls::AbstractMatrix{<:Real},
         Δt::AbstractVector,
-        system::AbstractQuantumSystem;
+        system::OpenQuantumSystem;
         kwargs...
     )
 
@@ -266,18 +352,46 @@ Rollout a density matrix `ρ₁` under the control `controls` and timesteps `Δt
 """
 function open_rollout(
     ρ_init::AbstractMatrix{<:Complex},
-    controls::AbstractMatrix,
+    controls::AbstractMatrix{<:Real},
     Δt::AbstractVector,
-    system::AbstractQuantumSystem;
+    system::OpenQuantumSystem;
     kwargs...
 )
     return open_rollout(density_to_iso_vec(ρ_init), controls, Δt, system; kwargs...)
 end
 
+"""
+    open_rollout_fidelity(
+        ρ⃗₁::AbstractVector{<:Complex},
+        ρ⃗₂::AbstractVector{<:Complex},
+        controls::AbstractMatrix{<:Real},
+        Δt::AbstractVector,
+        system::OpenQuantumSystem
+    )
+    open_rollout_fidelity(
+        ρ₁::AbstractMatrix{<:Complex},
+        ρ₂::AbstractMatrix{<:Complex},
+        controls::AbstractMatrix{<:Real},
+        Δt::AbstractVector,
+        system::OpenQuantumSystem
+    )
+    open_rollout_fidelity(
+        traj::NamedTrajectory,
+        system::OpenQuantumSystem;
+        state_name::Symbol=:ρ⃗̃,
+        control_name::Symbol=:a,
+        kwargs...
+    )
+
+Calculate the fidelity between the final state of an open quantum system rollout and a goal state.
+
+"""
+function open_rollout_fidelity end
+
 function open_rollout_fidelity(
     ρ_init::AbstractMatrix{<:Complex},
     ρ_goal::AbstractMatrix{<:Complex},
-    controls::AbstractMatrix,
+    controls::AbstractMatrix{<:Real},
     Δt::AbstractVector,
     system::AbstractQuantumSystem;
     kwargs...
@@ -285,7 +399,7 @@ function open_rollout_fidelity(
 
     ρ⃗̃_traj = open_rollout(ρ_init, controls, Δt, system; kwargs...)
     ρ_final = iso_vec_to_density(ρ⃗̃_traj[:, end])
-    return real(tr(ρ_goal * ρ_final))
+    return fidelity(ρ_final, ρ_goal)
 end
 
 function open_rollout_fidelity(
@@ -307,9 +421,35 @@ end
 # Unitary rollouts
 # ----------------------------------------------------------------------------- #
 
+"""
+    unitary_rollout(
+        Ũ⃗_init::AbstractVector{<:Real},
+        controls::AbstractMatrix{<:Real},
+        Δt::AbstractVector,
+        system::AbstractQuantumSystem;
+        kwargs...
+    )
+
+Rollout a isomorphic unitary operator `Ũ⃗_init` under the control `controls` for a time `Δt`
+using the system `system`.
+
+# Arguments
+- `Ũ⃗_init::AbstractVector{<:Real}`: Initial unitary vector
+- `controls::AbstractMatrix{<:Real}`: Control matrix
+- `Δt::AbstractVector`: Time steps
+- `system::AbstractQuantumSystem`: Quantum system
+
+# Keyword Arguments
+- `show_progress::Bool=false`: Show progress bar
+- `integrator::Function=expv`: Integrator function
+- `exp_vector_product::Bool`: Infer whether the integrator is an exponential-vector product
+
+"""
+function unitary_rollout end
+
 function unitary_rollout(
     Ũ⃗_init::AbstractVector{R1},
-    controls::AbstractMatrix{R2},
+    controls::AbstractMatrix{<:Real}{R2},
     Δt::AbstractVector{R3},
     system::AbstractQuantumSystem;
     show_progress=false,
@@ -342,7 +482,7 @@ function unitary_rollout(
 end
 
 function unitary_rollout(
-    controls::AbstractMatrix,
+    controls::AbstractMatrix{<:Real},
     Δt::AbstractVector,
     system::AbstractQuantumSystem;
     kwargs...
@@ -367,10 +507,62 @@ function unitary_rollout(
     )
 end
 
+"""
+    unitary_rollout_fidelity(
+        Ũ⃗_init::AbstractVector{<:Real},
+        Ũ⃗_goal::AbstractVector{<:Real},
+        controls::AbstractMatrix{<:Real},
+        Δt::AbstractVector,
+        system::AbstractQuantumSystem;
+        kwargs...
+    )
+    unitary_rollout_fidelity(
+        Ũ⃗_goal::AbstractVector{<:Real},
+        controls::AbstractMatrix{<:Real},
+        Δt::AbstractVector,
+        system::AbstractQuantumSystem;
+        kwargs...
+    )
+    unitary_rollout_fidelity(
+        U_init::AbstractMatrix{<:Complex},
+        U_goal::AbstractMatrix{<:Complex},
+        controls::AbstractMatrix{<:Real},
+        Δt::AbstractVector,
+        system::AbstractQuantumSystem;
+        kwargs...
+    )
+    unitary_rollout_fidelity(
+        U_goal::AbstractMatrix{<:Complex},
+        controls::AbstractMatrix{<:Real},
+        Δt::AbstractVector,
+        system::AbstractQuantumSystem;
+        kwargs...
+    )
+    unitary_rollout_fidelity(
+        U_goal::EmbeddedOperator,
+        controls::AbstractMatrix{<:Real},
+        Δt::AbstractVector,
+        system::AbstractQuantumSystem;
+        subspace::AbstractVector{Int}=U_goal.subspace,
+        kwargs...
+    )
+    unitary_rollout_fidelity(
+        traj::NamedTrajectory,
+        sys::AbstractQuantumSystem;
+        kwargs...
+    )
+
+Calculate the fidelity between the final state of a unitary rollout and a goal state. 
+If the initial unitary is not provided, the identity operator is assumed.
+If `phases` and `phase_operators` are provided, the free phase unitary fidelity is calculated.
+
+"""
+function unitary_rollout_fidelity end
+
 function unitary_rollout_fidelity(
     Ũ⃗_init::AbstractVector{<:Real},
     Ũ⃗_goal::AbstractVector{<:Real},
-    controls::AbstractMatrix,
+    controls::AbstractMatrix{<:Real},
     Δt::AbstractVector,
     system::AbstractQuantumSystem;
     subspace::AbstractVector{Int}=axes(iso_vec_to_operator(Ũ⃗_goal), 1),
@@ -390,7 +582,7 @@ end
 
 function unitary_rollout_fidelity(
     Ũ⃗_goal::AbstractVector{<:Real},
-    controls::AbstractMatrix,
+    controls::AbstractMatrix{<:Real},
     Δt::AbstractVector,
     system::AbstractQuantumSystem;
     kwargs...
@@ -402,7 +594,7 @@ end
 function unitary_rollout_fidelity(
     U_init::AbstractMatrix{<:Complex},
     U_goal::AbstractMatrix{<:Complex},
-    controls::AbstractMatrix,
+    controls::AbstractMatrix{<:Real},
     Δt::AbstractVector,
     system::AbstractQuantumSystem;
     kwargs...
@@ -414,7 +606,7 @@ end
 
 unitary_rollout_fidelity(
     U_goal::AbstractMatrix{<:Complex},
-    controls::AbstractMatrix,
+    controls::AbstractMatrix{<:Real},
     Δt::AbstractVector,
     system::AbstractQuantumSystem;
     kwargs...
@@ -422,7 +614,7 @@ unitary_rollout_fidelity(
 
 unitary_rollout_fidelity(
     U_goal::EmbeddedOperator,
-    controls::AbstractMatrix,
+    controls::AbstractMatrix{<:Real},
     Δt::AbstractVector,
     system::AbstractQuantumSystem;
     subspace::AbstractVector{Int}=U_goal.subspace,
@@ -447,14 +639,6 @@ end
 # Experimental rollouts
 # ----------------------------------------------------------------------------- #
 
-unitary_rollout_fidelity(
-    U_goal::EmbeddedOperator,
-    controls::AbstractMatrix{Float64},
-    Δt::Union{AbstractVector{Float64}, AbstractMatrix{Float64}, Float64},
-    sys::AbstractQuantumSystem;
-    subspace=U_goal.subspace,
-    kwargs...
-) = unitary_rollout_fidelity(U_goal.operator, controls, Δt, sys; subspace=subspace, kwargs...)
 
 # *************************************************************************** #
 
@@ -570,4 +754,6 @@ end
     iso_vec_dim = length(operator_to_iso_vec(sys.H(zeros(sys.n_drives))))
     @test size(result2) == (iso_vec_dim, T)
 end
+
+
 end

@@ -36,3 +36,12 @@ Modules = [PiccoloQuantumObjects.QuantumObjectUtils]
 ```@autodocs
 Modules = [PiccoloQuantumObjects.QuantumSystemUtils]
 ```
+
+```@autodocs
+Modules = [PiccoloQuantumObjects.DirectSums]
+```
+
+## Rollouts
+```@autodocs
+Modules = [PiccoloQuantumObjects.Rollouts]
+```
